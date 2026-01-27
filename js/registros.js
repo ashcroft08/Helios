@@ -309,6 +309,24 @@ function verDetalle(folioId) {
             actividadesContainer.appendChild(card);
         });
 
+        // Map Implementation
+        const mapaContainer = document.getElementById("detalle-mapa-container");
+        const mapaIframe = document.getElementById("detalle-mapa-iframe");
+
+        // Potential coordinate fields: folio.coordenadas (string "lat,lng"), folio.lat/lng, etc.
+        let coords = folio.coordenadas || (folio.lat && folio.lng ? `${folio.lat},${folio.lng}` : null);
+
+        if (coords) {
+            console.log("Coordenadas encontradas:", coords);
+            mapaContainer.classList.remove("hidden");
+            // Use Google Maps Embed API (Standard mode doesn't require API key for basic embed if shared)
+            // But for a better experience, we use the standard place/search URL pattern
+            mapaIframe.src = `https://maps.google.com/maps?q=${coords}&z=15&output=embed`;
+        } else {
+            mapaContainer.classList.add("hidden");
+            mapaIframe.src = "";
+        }
+
         // Show modal
         const modal = document.getElementById("modal-detalle");
         const content = document.getElementById("modal-detalle-content");

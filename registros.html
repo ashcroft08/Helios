@@ -305,10 +305,20 @@
             </div>
 
             <!-- Activities List -->
-            <div class="flex-1 overflow-y-auto p-6">
+            <div class="flex-1 overflow-y-auto p-6 scrollbar-thin">
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Actividades Evaluadas</p>
-                <div id="detalle-actividades" class="space-y-4">
+                <div id="detalle-actividades" class="space-y-4 mb-8">
                     <!-- Activity cards will be injected here by JS -->
+                </div>
+
+                <!-- Map Section (New) -->
+                <div id="detalle-mapa-container" class="hidden">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Ubicación de Captura</p>
+                    <div
+                        class="w-full h-64 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-inner">
+                        <iframe id="detalle-mapa-iframe" class="w-full h-full border-0" loading="lazy" allowfullscreen
+                            src=""></iframe>
+                    </div>
                 </div>
             </div>
 
