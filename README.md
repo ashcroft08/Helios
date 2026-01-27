@@ -164,11 +164,3 @@ Este proyecto está bajo la Licencia MIT. Consulta el archivo [LICENSE](LICENSE)
 ## 📞 Contacto
 
 Si tienes preguntas o sugerencias, no dudes en abrir un issue en el repositorio.
-
----
-
-<div align="center">
-  
-**Hecho con ❤️ para la gestión eficiente del personal**
-
-</div>
