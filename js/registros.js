@@ -12,56 +12,56 @@ function cargarRegistros() {
 }
 
 function cargarSucursales(data) {
-    if (!data) return;
-    const sucursalesSet = new Set();
+    // Load ubicaciones from dedicated collection
+    db.ref("ubicaciones").once("value").then(snapshot => {
+        const ubicacionesData = snapshot.val();
+        let listaSorted = [];
 
-    // FOLIOS: data[folioId].sucursal
-    Object.keys(data).forEach(folioId => {
-        const folio = data[folioId];
-        if (folio.sucursal) sucursalesSet.add(folio.sucursal);
+        if (ubicacionesData && typeof ubicacionesData === 'object') {
+            // Keys are the location names
+            listaSorted = Object.keys(ubicacionesData).sort();
+        }
+
+        // Update Custom Filter Dropdown
+        const sucursalOptions = document.getElementById("sucursal-options");
+        const hiddenInput = document.getElementById("filtro-sucursal");
+        const currentFiltroVal = hiddenInput ? hiddenInput.value : "";
+
+        if (sucursalOptions) {
+            sucursalOptions.innerHTML = "";
+
+            // Add "Todas" option
+            const btnTodas = document.createElement("button");
+            btnTodas.type = "button";
+            btnTodas.className = `w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between ${!currentFiltroVal ? 'text-primary font-semibold bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-600 dark:text-slate-300'}`;
+            btnTodas.innerHTML = `<span>Todas las Sucursales</span>${!currentFiltroVal ? '<span class="material-icons-outlined text-sm">check</span>' : ''}`;
+            btnTodas.onclick = () => seleccionarSucursalFiltro("");
+            sucursalOptions.appendChild(btnTodas);
+
+            listaSorted.forEach(loc => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = `w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between ${currentFiltroVal === loc ? 'text-primary font-semibold bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-600 dark:text-slate-300'}`;
+                item.innerHTML = `<span>${loc}</span>${currentFiltroVal === loc ? '<span class="material-icons-outlined text-sm">check</span>' : ''}`;
+                item.onclick = () => seleccionarSucursalFiltro(loc);
+                sucursalOptions.appendChild(item);
+            });
+        }
+
+        // Update Form Select (if exists)
+        const formSelect = document.getElementById("form-sucursal");
+        if (formSelect) {
+            const currentFormValue = formSelect.value;
+            formSelect.innerHTML = '<option value="" disabled selected>Seleccione Sucursal</option>';
+            listaSorted.forEach(loc => {
+                const opt = document.createElement("option");
+                opt.value = loc;
+                opt.textContent = loc;
+                formSelect.appendChild(opt);
+            });
+            if (currentFormValue) formSelect.value = currentFormValue;
+        }
     });
-
-    const listaSorted = Array.from(sucursalesSet).sort();
-
-    // Update Custom Filter Dropdown
-    const sucursalOptions = document.getElementById("sucursal-options");
-    const hiddenInput = document.getElementById("filtro-sucursal");
-    const currentFiltroVal = hiddenInput ? hiddenInput.value : "";
-
-    if (sucursalOptions) {
-        sucursalOptions.innerHTML = "";
-
-        // Add "Todas" option
-        const btnTodas = document.createElement("button");
-        btnTodas.type = "button";
-        btnTodas.className = `w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between ${!currentFiltroVal ? 'text-primary font-semibold bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-600 dark:text-slate-300'}`;
-        btnTodas.innerHTML = `<span>Todas las Sucursales</span>${!currentFiltroVal ? '<span class="material-icons-outlined text-sm">check</span>' : ''}`;
-        btnTodas.onclick = () => seleccionarSucursalFiltro("");
-        sucursalOptions.appendChild(btnTodas);
-
-        listaSorted.forEach(loc => {
-            const item = document.createElement("button");
-            item.type = "button";
-            item.className = `w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between ${currentFiltroVal === loc ? 'text-primary font-semibold bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-600 dark:text-slate-300'}`;
-            item.innerHTML = `<span>${loc}</span>${currentFiltroVal === loc ? '<span class="material-icons-outlined text-sm">check</span>' : ''}`;
-            item.onclick = () => seleccionarSucursalFiltro(loc);
-            sucursalOptions.appendChild(item);
-        });
-    }
-
-    // Update Form Select (if exists)
-    const formSelect = document.getElementById("form-sucursal");
-    if (formSelect) {
-        const currentFormValue = formSelect.value;
-        formSelect.innerHTML = '<option value="" disabled selected>Seleccione Sucursal</option>';
-        listaSorted.forEach(loc => {
-            const opt = document.createElement("option");
-            opt.value = loc;
-            opt.textContent = loc;
-            formSelect.appendChild(opt);
-        });
-        if (currentFormValue) formSelect.value = currentFormValue;
-    }
 }
 
 function toggleDropdownSucursal() {

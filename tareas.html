@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helios - Gestión de Tareas</title>
+    <link rel="icon" type="image/svg+xml" href="img/favicon_helios.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#3b82f6",
+                        "primary-hover": "#2563eb",
+                        success: "#10b981",
+                        warning: "#f59e0b",
+                        danger: "#ef4444",
+                        info: "#06b6d4",
+                        "background-light": "#f8fafc",
+                        "background-dark": "#0a0f1a",
+                        "surface-dark": "#111827",
+                        "card-dark": "#1e293b",
+                        "sidebar-dark": "#0f172a",
+                        accent: "#8b5cf6",
+                    },
+                    fontFamily: { display: ["Inter", "sans-serif"] },
+                    borderRadius: { DEFAULT: "0.75rem" },
+                },
+            },
+        };
+    </script>
+    <link rel="stylesheet" href="css/ui.css">
+</head>
+
+<body
+    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
+    <div class="flex min-h-screen">
+        <main class="flex-1 overflow-y-auto">
+            <!-- Header -->
+            <header class="p-6 lg:px-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Gestión de Tareas</h2>
+                    <p class="text-slate-500 dark:text-slate-400 mt-1">Asigna y supervisa tareas del personal</p>
+                </div>
+                <button onclick="openModalTarea()"
+                    class="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-lg shadow-blue-500/20">
+                    <span class="material-icons-outlined">add_task</span> Nueva Tarea
+                </button>
+            </header>
+
+            <!-- Filters -->
+            <div class="px-6 lg:px-10 mb-6">
+                <div
+                    class="bg-white dark:bg-card-dark p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap gap-4 items-end">
+                    <!-- Estado Filter -->
+                    <div class="flex-1 min-w-[160px] relative">
+                        <label
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Estado</label>
+                        <button type="button" onclick="toggleDropdown('dropdown-estado-menu')" id="btn-estado-filtro"
+                            class="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                            <span id="selected-estado-text">Todos los estados</span>
+                            <span class="material-icons-outlined text-slate-400">expand_more</span>
+                        </button>
+                        <div id="dropdown-estado-menu"
+                            class="hidden absolute left-0 mt-2 w-full origin-top-left rounded-xl bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                            <div class="py-1">
+                                <button type="button" onclick="seleccionarFiltro('estado', '', 'Todos los estados')"
+                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Todos
+                                    los estados</button>
+                                <button type="button" onclick="seleccionarFiltro('estado', 'pendiente', 'Pendiente')"
+                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Pendiente</button>
+                                <button type="button"
+                                    onclick="seleccionarFiltro('estado', 'en_progreso', 'En Progreso')"
+                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">En
+                                    Progreso</button>
+                                <button type="button" onclick="seleccionarFiltro('estado', 'completada', 'Completada')"
+                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Completada</button>
+                                <button type="button" onclick="seleccionarFiltro('estado', 'vencida', 'Vencida')"
+                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Vencida</button>
+                            </div>
+                        </div>
+                        <input type="hidden" id="filtro-estado" value="">
+                    </div>
+
+                    <!-- Prioridad Filter -->
+                    <div class="flex-1 min-w-[160px] relative">
+                        <label
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Prioridad</label>
+                        <button type="button" onclick="toggleDropdown('dropdown-prioridad-menu')"
+                            id="btn-prioridad-filtro"
+                            class="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                            <span id="selected-prioridad-text">Todas</span>
+                            <span class="material-icons-outlined text-slate-400">expand_more</span>
+                        </button>
+                        <div id="dropdown-prioridad-menu"
+                            class="hidden absolute left-0 mt-2 w-full origin-top-left rounded-xl bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                            <div class="py-1">
+                                <button type="button" onclick="seleccionarFiltro('prioridad', '', 'Todas')"
+                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Todas</button>
+                                <button type="button" onclick="seleccionarFiltro('prioridad', 'alta', 'Alta')"
+                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Alta</button>
+                                <button type="button" onclick="seleccionarFiltro('prioridad', 'media', 'Media')"
+                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Media</button>
+                                <button type="button" onclick="seleccionarFiltro('prioridad', 'baja', 'Baja')"
+                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Baja</button>
+                            </div>
+                        </div>
+                        <input type="hidden" id="filtro-prioridad" value="">
+                    </div>
+
+                    <!-- Sucursal Filter -->
+                    <div class="flex-1 min-w-[200px] relative">
+                        <label
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Sucursal</label>
+                        <button type="button" onclick="toggleDropdown('dropdown-sucursal-menu')"
+                            id="btn-sucursal-filtro"
+                            class="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                            <span id="selected-sucursal-text">Todas las sucursales</span>
+                            <span class="material-icons-outlined text-slate-400">expand_more</span>
+                        </button>
+                        <div id="dropdown-sucursal-menu"
+                            class="hidden absolute left-0 mt-2 w-full origin-top-left rounded-xl bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                            <div class="py-1 max-h-60 overflow-y-auto" id="sucursal-options">
+                                <!-- Options injected here -->
+                            </div>
+                        </div>
+                        <input type="hidden" id="filtro-sucursal" value="">
+                    </div>
+                    <!-- Search -->
+                    <div class="flex-1 min-w-[200px]">
+                        <label
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Buscar</label>
+                        <div class="relative">
+                            <span
+                                class="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+                            <input type="text" id="buscar-tarea" placeholder="Buscar tarea..." oninput="filtrarTareas()"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-primary focus:border-primary">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tasks Grid -->
+            <div class="px-6 lg:px-10 pb-10">
+                <div id="tareas-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <!-- Tasks will be injected here -->
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="hidden text-center py-16">
+                    <span
+                        class="material-icons-outlined text-6xl text-slate-300 dark:text-slate-600 mb-4">task_alt</span>
+                    <h3 class="text-lg font-semibold text-slate-500 dark:text-slate-400">No hay tareas</h3>
+                    <p class="text-slate-400 dark:text-slate-500 mt-1">Crea una nueva tarea para comenzar</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Nueva/Editar Tarea -->
+    <div id="modal-tarea"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-[100] p-4 overflow-y-auto">
+        <div id="modal-tarea-content"
+            class="bg-white dark:bg-card-dark rounded-3xl shadow-2xl w-full max-w-lg transform transition-all duration-300 scale-95 opacity-0 my-8 max-h-[calc(100vh-4rem)] overflow-y-auto">
+            <!-- Header -->
+            <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+                <div class="flex items-center justify-between">
+                    <h3 id="modal-tarea-title" class="text-xl font-bold text-slate-800 dark:text-white">Nueva Tarea</h3>
+                    <button onclick="closeModalTarea()"
+                        class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
+                        <span class="material-icons-outlined text-slate-400">close</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form id="form-tarea" class="p-6 space-y-5">
+                <input type="hidden" id="tarea-id">
+
+                <!-- Título -->
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Título *</label>
+                    <input type="text" id="tarea-titulo" required placeholder="Ej: Limpieza profunda de cocina"
+                        class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
+                </div>
+
+                <!-- Descripción -->
+                <div>
+                    <label
+                        class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Descripción</label>
+                    <textarea id="tarea-descripcion" rows="3" placeholder="Detalles adicionales de la tarea..."
+                        class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary resize-none"></textarea>
+                </div>
+
+                <!-- Asignar a -->
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Asignar a
+                        *</label>
+                    <div class="relative">
+                        <span
+                            class="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">person</span>
+                        <input type="text" id="tarea-asignado" required placeholder="Nombre del empleado"
+                            class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
+                    </div>
+                </div>
+
+                <!-- Row: Sucursal + Fecha -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Sucursal
+                            *</label>
+                        <select id="tarea-sucursal" required
+                            class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
+                            <option value="">Seleccionar</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Fecha límite
+                            *</label>
+                        <input type="date" id="tarea-fecha" required
+                            class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
+                    </div>
+                </div>
+
+                <!-- Prioridad -->
+                <div>
+                    <label
+                        class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Prioridad</label>
+                    <div class="flex gap-3">
+                        <label class="flex-1 cursor-pointer">
+                            <input type="radio" name="prioridad" value="baja" class="peer hidden">
+                            <div
+                                class="text-center py-2.5 px-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 peer-checked:border-success peer-checked:bg-success/10 peer-checked:text-success transition-all text-sm font-medium">
+                                🟢 Baja
+                            </div>
+                        </label>
+                        <label class="flex-1 cursor-pointer">
+                            <input type="radio" name="prioridad" value="media" class="peer hidden" checked>
+                            <div
+                                class="text-center py-2.5 px-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 peer-checked:border-warning peer-checked:bg-warning/10 peer-checked:text-warning transition-all text-sm font-medium">
+                                🟡 Media
+                            </div>
+                        </label>
+                        <label class="flex-1 cursor-pointer">
+                            <input type="radio" name="prioridad" value="alta" class="peer hidden">
+                            <div
+                                class="text-center py-2.5 px-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 peer-checked:border-danger peer-checked:bg-danger/10 peer-checked:text-danger transition-all text-sm font-medium">
+                                🔴 Alta
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit"
+                    class="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
+                    <span class="material-icons-outlined">save</span>
+                    <span id="btn-submit-text">Crear Tarea</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Ver Tarea Completada -->
+    <div id="modal-ver-tarea"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div id="modal-ver-content"
+            class="bg-white dark:bg-card-dark rounded-3xl shadow-2xl w-full max-w-lg transform transition-all duration-300 scale-95 opacity-0 max-h-[90vh] overflow-y-auto">
+            <!-- Content will be injected -->
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-3"></div>
+
+    <!-- Scripts -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/tareas.js"></script>
+</body>
+
+</html>

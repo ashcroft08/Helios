@@ -30,26 +30,30 @@ function toggleDropdown() {
 
 function poblarFiltroUbicacion(data) {
     const container = document.getElementById("dropdown-options");
-    const ubicaciones = new Set();
 
-    // FOLIOS structure: data[folioId].sucursal
-    Object.keys(data).forEach(folioId => {
-        const folio = data[folioId];
-        if (folio.sucursal) ubicaciones.add(folio.sucursal);
-    });
+    // Load ubicaciones from dedicated collection
+    db.ref("ubicaciones").once("value").then(snapshot => {
+        const ubicacionesData = snapshot.val();
+        let ubicaciones = [];
 
-    const options = ["todos", ...Array.from(ubicaciones).sort()];
-    container.innerHTML = "";
+        if (ubicacionesData && typeof ubicacionesData === 'object') {
+            // Keys are the location names
+            ubicaciones = Object.keys(ubicacionesData).sort();
+        }
 
-    options.forEach(loc => {
-        const item = document.createElement("button");
-        item.className = `w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between ${selectedUbicacion === loc ? 'text-primary font-semibold bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-600 dark:text-slate-300'}`;
-        item.innerHTML = `
-            <span>${loc === "todos" ? "Todas las sucursales" : loc}</span>
-            ${selectedUbicacion === loc ? '<span class="material-icons-outlined text-sm">check</span>' : ''}
-        `;
-        item.onclick = () => seleccionarUbicacion(loc);
-        container.appendChild(item);
+        const options = ["todos", ...ubicaciones];
+        container.innerHTML = "";
+
+        options.forEach(loc => {
+            const item = document.createElement("button");
+            item.className = `w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between ${selectedUbicacion === loc ? 'text-primary font-semibold bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-600 dark:text-slate-300'}`;
+            item.innerHTML = `
+                <span>${loc === "todos" ? "Todas las sucursales" : loc}</span>
+                ${selectedUbicacion === loc ? '<span class="material-icons-outlined text-sm">check</span>' : ''}
+            `;
+            item.onclick = () => seleccionarUbicacion(loc);
+            container.appendChild(item);
+        });
     });
 }
 

@@ -72,6 +72,11 @@ function injectSidebar() {
                     <span class="font-medium nav-text">Registros</span>
                     <span class="nav-tooltip">Registros</span>
                 </a>
+                <a href="tareas.html" class="nav-link group flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activePage === 'tareas.html' ? 'bg-primary text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}">
+                    <span class="material-icons-outlined">add_task</span>
+                    <span class="font-medium nav-text">Tareas</span>
+                    <span class="nav-tooltip">Tareas</span>
+                </a>
             </nav>
 
             <!-- Footer Section -->
