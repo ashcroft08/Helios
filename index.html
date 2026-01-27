@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html class="light" lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Helios Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="img/favicon_helios.svg">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        // Primary Brand Color
+                        primary: "#3b82f6",
+                        "primary-hover": "#2563eb",
+
+                        // Semantic Colors
+                        success: "#10b981",
+                        warning: "#f59e0b",
+                        danger: "#ef4444",
+                        info: "#06b6d4",
+
+                        // Light Mode Backgrounds (softer, less harsh)
+                        "background-light": "#f8fafc",
+                        "surface-light": "#ffffff",
+                        "card-light": "#ffffff",
+
+                        // Dark Mode Backgrounds (deeper, more immersive)
+                        "background-dark": "#0a0f1a",
+                        "surface-dark": "#111827",
+                        "card-dark": "#1e293b",
+                        "sidebar-dark": "#0f172a",
+
+                        // Accent for highlights
+                        accent: "#8b5cf6",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.75rem",
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .chart-gradient {
+            background: linear-gradient(180deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0) 100%);
+        }
+
+        /* Custom styles for Chart.js tooltips and elements if needed */
+    </style>
+    <link rel="stylesheet" href="css/ui.css">
+</head>
+
+<body
+    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
+    <div class="flex min-h-screen" id="app-container">
+        <!-- Sidebar will be injected here or kept for consistency -->
+        <main class="flex-1 overflow-y-auto">
+            <header class="p-6 lg:px-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800 dark:text-white">¡Hola, Bienvenido de nuevo! 👋</h2>
+                    <p class="text-slate-500 dark:text-slate-400 mt-1">Estadísticas y resumen de actividad del personal
+                        en tiempo real.</p>
+                </div>
+                <div class="relative inline-block text-left" id="dropdown-ubicacion">
+                    <button type="button" onclick="toggleDropdown()"
+                        class="flex items-center space-x-3 bg-white dark:bg-slate-800 p-2.5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all min-w-[220px] justify-between">
+                        <div class="flex items-center">
+                            <span class="material-icons-outlined text-slate-400 mr-2 text-lg">location_on</span>
+                            <span id="selected-location">Todas las sucursales</span>
+                        </div>
+                        <span class="material-icons-outlined text-slate-400">expand_more</span>
+                    </button>
+
+                    <div id="dropdown-menu"
+                        class="hidden absolute right-0 mt-2 w-full origin-top-right rounded-xl bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700 ring-1 ring-black ring-opacity-5 focus:outline-none z-50 overflow-hidden animate-fade-in">
+                        <div class="py-1" id="dropdown-options">
+                            <!-- Options injected here -->
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="px-6 lg:px-10 grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <!-- KPI Total -->
+                <div
+                    class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between transition-transform hover:scale-[1.02] duration-200">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total
+                            Registros</p>
+                        <h3 class="text-3xl font-bold mt-1 dark:text-white" id="kpi-total">0</h3>
+                        <p class="text-xs text-blue-500 font-semibold mt-2 flex items-center">
+                            <span class="material-icons-outlined text-xs mr-1">trending_up</span>
+                            Historico total
+                        </p>
+                    </div>
+                    <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-2xl">
+                        <span class="material-icons-outlined text-primary text-3xl">description</span>
+                    </div>
+                </div>
+
+                <!-- KPI Promedio -->
+                <div
+                    class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between transition-transform hover:scale-[1.02] duration-200">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                            Puntaje Promedio</p>
+                        <h3 class="text-3xl font-bold mt-1 dark:text-white" id="kpi-puntuacion">0.0</h3>
+                        <p class="text-xs text-amber-500 font-semibold mt-2 flex items-center">
+                            <span class="material-icons-outlined text-xs mr-1">star</span>
+                            Escala del 1 al 10
+                        </p>
+                    </div>
+                    <div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-2xl">
+                        <span class="material-icons-outlined text-amber-500 text-3xl">grade</span>
+                    </div>
+                </div>
+
+                <!-- KPI Hoy -->
+                <div
+                    class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between transition-transform hover:scale-[1.02] duration-200">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                            Actividad Hoy</p>
+                        <h3 class="text-3xl font-bold mt-1 dark:text-white" id="kpi-hoy">0</h3>
+                        <p class="text-xs text-emerald-500 font-semibold mt-2 flex items-center">
+                            <span class="material-icons-outlined text-xs mr-1">history</span>
+                            Registros nuevos hoy
+                        </p>
+                    </div>
+                    <div class="p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl">
+                        <span class="material-icons-outlined text-emerald-500 text-3xl">event_available</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 lg:px-10 grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10">
+                <!-- Evolucion Semanal -->
+                <div
+                    class="xl:col-span-2 bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h4 class="text-lg font-bold dark:text-white">Evolución Semanal</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Tendencia de registros últimos 7 días
+                            </p>
+                        </div>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="chart-evolucion"></canvas>
+                    </div>
+                </div>
+
+                <!-- Tipos de Actividad -->
+                <div
+                    class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <h4 class="text-lg font-bold mb-1 dark:text-white">Tipos de Actividad</h4>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-8">Distribución por categoría</p>
+                    <div class="relative flex justify-center items-center h-48">
+                        <canvas id="chart-actividades"></canvas>
+                    </div>
+                    <div class="mt-8 space-y-3" id="actividades-legend">
+                        <!-- Legend will be injected -->
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helios - Detalle</title>
+    <link rel="icon" type="image/svg+xml" href="img/favicon_helios.svg">
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
+
+    <link rel="stylesheet" href="css/ui.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#3b82f6",
+                        "primary-hover": "#2563eb",
+                        success: "#10b981",
+                        warning: "#f59e0b",
+                        danger: "#ef4444",
+                        info: "#06b6d4",
+                        "background-light": "#f8fafc",
+                        "background-dark": "#0a0f1a",
+                        "surface-dark": "#111827",
+                        "card-dark": "#1e293b",
+                        "sidebar-dark": "#0f172a",
+                        accent: "#8b5cf6",
+                    },
+                    fontFamily: { display: ["Inter", "sans-serif"] },
+                    borderRadius: { DEFAULT: "0.75rem" },
+                },
+            },
+        };
+    </script>
+
+    <style>
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+        }
+
+        @media (max-width: 768px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .gallery img {
+            transition: transform 0.3s ease;
+        }
+
+        .gallery img:hover {
+            transform: scale(1.02);
+        }
+    </style>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+const uid = params.get("uid");
+const id = params.get("id");
+
+if (uid && id) {
+db.ref("registros/" + uid + "/" + id).once("value").then(snapshot => {
+const r = snapshot.val();
+if (!r) return;
+
+document.getElementById("usuario").textContent = r.correo;
+document.getElementById("fecha").textContent = r.fecha.substring(0, 10);
+document.getElementById("actividad").textContent = r.actividad;
+document.getElementById("puntuacion").textContent = r.puntuacion;
+document.getElementById("ubicacion").textContent = r.ubicacion;
+document.getElementById("comentario").textContent = r.comentario || "Sin comentarios";
+
+const fotosDiv = document.getElementById("fotos");
+const fotos = Array.isArray(r.fotoUrl) ? r.fotoUrl : (r.fotoUrl ? [r.fotoUrl] : []);
+
+if (fotos.length === 0) {
+fotosDiv.innerHTML = "<p style='color:var(--text-muted)'>No hay fotos registradas.</p>";
+} else {
+fotos.forEach(url => {
+let img = document.createElement("img");
+img.src = url;
+fotosDiv.appendChild(img);
+});
+}
+});
+}
+</script>
+</body>
+
+</html>
