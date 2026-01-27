@@ -580,6 +580,23 @@ async function exportarPDFFolio(folioId) {
         doc.setTextColor(245, 158, 11);
         doc.text(promedio + " / 10", 100, 83);
 
+        // Coordinates Implementation in PDF
+        const coords = folio.coordenadas || (folio.lat && folio.lng ? `${folio.lat},${folio.lng}` : null);
+        if (coords) {
+            doc.setTextColor(100);
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "normal");
+            doc.text("COORDENADAS (VER MAPA)", 145, 78);
+
+            doc.setTextColor(59, 130, 246);
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.text(coords, 145, 83);
+
+            // Add clickable link
+            doc.link(145, 79, 40, 6, { url: `https://www.google.com/maps/search/?api=1&query=${coords}` });
+        }
+
         // 3. Activities Section with Images
         let currentY = 95;
         const pageHeight = doc.internal.pageSize.height || 297;
