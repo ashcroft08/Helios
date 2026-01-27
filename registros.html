@@ -1,8 +1,14 @@
 <!DOCTYPE html>
-<html class="light" lang="es">
+<html lang="es">
 
 <head>
     <meta charset="utf-8" />
+    <script>
+        (function () {
+            const theme = localStorage.getItem('helios-theme') || 'light';
+            document.documentElement.className = theme;
+        })();
+    </script>
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>Helios - Registros</title>
     <link rel="icon" type="image/svg+xml" href="img/favicon_helios.svg">

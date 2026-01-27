@@ -3,16 +3,19 @@
  * Handles injection, collapse, and light/dark mode persistence.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-    initTheme();
-    injectSidebar();
-    initCollapse();
-});
-
+// Immediate theme application to prevent flash (also called from head script)
 function initTheme() {
     const savedTheme = localStorage.getItem('helios-theme') || 'light';
     document.documentElement.className = savedTheme;
 }
+
+// Run immediately since this script is loaded with 'defer' or at end of body
+initTheme();
+
+document.addEventListener('DOMContentLoaded', () => {
+    injectSidebar();
+    initCollapse();
+});
 
 function toggleTheme() {
     const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';

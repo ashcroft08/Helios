@@ -2,7 +2,7 @@
 :root {
     --sidebar-width: 256px;
     --sidebar-collapsed-width: 80px;
-    --transition-speed: 0.3s;
+    --transition-speed: 0.25s;
 }
 
 /* ===== CUSTOM SCROLLBARS ===== */
@@ -50,13 +50,16 @@
 
 /* Sidebar Base */
 #sidebar {
-    transition: width var(--transition-speed) ease;
+    transition: width var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
     width: var(--sidebar-width);
+    will-change: width;
+    contain: layout;
 }
 
 #main-content {
-    transition: margin-left var(--transition-speed) ease;
+    transition: margin-left var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
     margin-left: var(--sidebar-width);
+    will-change: margin-left;
 }
 
 /* Collapsed State */

@@ -96,7 +96,8 @@ function mostrarTabla(data, desde, hasta, sucursalFiltro) {
     if (!data) return;
 
     // FOLIOS: One row per folio (aggregate activities)
-    Object.keys(data).forEach(folioId => {
+    // Sort keys descending to get newest first (insertion order)
+    Object.keys(data).sort().reverse().forEach(folioId => {
         const folio = data[folioId];
         const fechaCorta = folio.fecha ? folio.fecha.substring(0, 10) : "";
         const sucursal = folio.sucursal || "General";
