@@ -206,7 +206,7 @@ function crearTarjetaTarea(tarea) {
     const estadoBadges = {
         'pendiente': { bg: 'bg-slate-100 dark:bg-slate-700', text: 'text-slate-600 dark:text-slate-300', label: 'Pendiente' },
         'en_progreso': { bg: 'bg-info/10', text: 'text-info', label: 'En Progreso' },
-        'completada': { bg: 'bg-success/10', text: 'text-success', label: 'Completada' },
+        'completado': { bg: 'bg-success/10', text: 'text-success', label: 'Completado' },
         'vencida': { bg: 'bg-danger/10', text: 'text-danger', label: 'Vencida' }
     };
 
@@ -262,7 +262,7 @@ function crearTarjetaTarea(tarea) {
             
             <!-- Actions -->
             <div class="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
-                ${tarea.estado === 'completada' ? `
+                ${tarea.estado === 'completado' ? `
                     <button onclick="verTareaCompletada('${tarea.id}')" class="flex-1 py-2 px-3 rounded-lg bg-success/10 text-success text-sm font-medium hover:bg-success/20 transition-colors flex items-center justify-center gap-1">
                         <span class="material-icons-outlined text-sm">visibility</span> Ver evidencia
                     </button>
@@ -380,21 +380,23 @@ function verTareaCompletada(id) {
     const tarea = allTareas[id];
     if (!tarea) return;
 
-    const completada = tarea.completada || {};
-
+    // Handle both single URL (fotoCumplimiento) and array (fotos) formats
     let fotosHtml = '';
-    if (completada.fotos && completada.fotos.length > 0) {
+    const fotoUrl = tarea.fotoCumplimiento || (tarea.completada?.fotos?.[0]);
+    if (fotoUrl) {
         fotosHtml = `
             <div class="mt-4">
                 <p class="text-xs font-bold text-slate-500 uppercase mb-2">Evidencia Fotográfica</p>
-                <div class="grid grid-cols-2 gap-2">
-                    ${completada.fotos.map(url => `
-                        <img src="${url}" alt="Evidencia" class="rounded-xl object-cover h-32 w-full cursor-pointer hover:opacity-80" onclick="window.open('${url}', '_blank')">
-                    `).join('')}
+                <div class="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                    <img src="${fotoUrl}" alt="Evidencia" class="w-full max-h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity" onclick="window.open('${fotoUrl}', '_blank')">
                 </div>
             </div>
         `;
     }
+
+    // Handle date: fechaCumplido or completada.fecha
+    const fechaCompletado = tarea.fechaCumplido || tarea.completada?.fecha;
+    const fechaFormateada = fechaCompletado ? new Date(fechaCompletado).toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A';
 
     const content = document.getElementById('modal-ver-content');
     content.innerHTML = `
@@ -411,8 +413,9 @@ function verTareaCompletada(id) {
                 </button>
             </div>
         </div>
-        <div class="p-6">
-            <h4 class="font-bold text-slate-800 dark:text-white text-lg mb-4">${tarea.titulo}</h4>
+        <div class="p-6 overflow-y-auto max-h-[70vh]">
+            <h4 class="font-bold text-slate-800 dark:text-white text-lg mb-2">${tarea.titulo}</h4>
+            ${tarea.descripcion ? `<p class="text-sm text-slate-500 dark:text-slate-400 mb-4">${tarea.descripcion}</p>` : ''}
             
             <div class="space-y-3 text-sm">
                 <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
@@ -425,22 +428,9 @@ function verTareaCompletada(id) {
                 </div>
                 <div class="flex items-center gap-2 text-success">
                     <span class="material-icons-outlined text-base">check_circle</span>
-                    <span>Completada: ${completada.fecha ? new Date(completada.fecha).toLocaleDateString('es') : 'N/A'}</span>
+                    <span>Completada: <strong>${fechaFormateada}</strong></span>
                 </div>
-                ${completada.puntuacion ? `
-                <div class="flex items-center gap-2 text-warning">
-                    <span class="material-icons-outlined text-base">star</span>
-                    <span>Puntuación: <strong>${completada.puntuacion}/10</strong></span>
-                </div>
-                ` : ''}
             </div>
-            
-            ${completada.comentario ? `
-            <div class="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                <p class="text-xs font-bold text-slate-500 uppercase mb-1">Comentario</p>
-                <p class="text-slate-600 dark:text-slate-300 text-sm">${completada.comentario}</p>
-            </div>
-            ` : ''}
             
             ${fotosHtml}
         </div>
