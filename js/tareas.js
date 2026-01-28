@@ -110,7 +110,7 @@ function cargarSucursales() {
             btnTodas.type = 'button';
             btnTodas.className = 'w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between text-primary font-semibold bg-blue-50/50 dark:bg-blue-900/20';
             btnTodas.innerHTML = `<span>Todas las sucursales</span><span class="material-icons-outlined text-sm check-icon">check</span>`;
-            btnTodas.onclick = () => seleccionarFiltro('sucursal', '', 'Todas las sucursales');
+            btnTodas.setAttribute('onclick', "seleccionarFiltro('sucursal', '', 'Todas las sucursales')");
             sucursalOptions.appendChild(btnTodas);
 
             sucursalesList.forEach(suc => {
@@ -118,7 +118,7 @@ function cargarSucursales() {
                 btn.type = 'button';
                 btn.className = 'w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between text-slate-600 dark:text-slate-300';
                 btn.innerHTML = `<span>${suc}</span>`;
-                btn.onclick = () => seleccionarFiltro('sucursal', suc, suc);
+                btn.setAttribute('onclick', `seleccionarFiltro('sucursal', '${suc}', '${suc}')`);
                 sucursalOptions.appendChild(btn);
             });
         }
@@ -179,7 +179,7 @@ function filtrarTareas() {
         // Apply filters
         if (estadoFiltro && tarea.estado !== estadoFiltro) return;
         if (prioridadFiltro && tarea.prioridad !== prioridadFiltro) return;
-        if (sucursalFiltro && tarea.sucursal !== sucursalFiltro) return;
+        if (sucursalFiltro && tarea.sucursal?.toLowerCase() !== sucursalFiltro.toLowerCase()) return;
         if (busqueda && !tarea.titulo.toLowerCase().includes(busqueda) &&
             !tarea.asignadoA.toLowerCase().includes(busqueda)) return;
 

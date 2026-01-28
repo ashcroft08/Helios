@@ -104,7 +104,8 @@ function mostrarTabla(data, desde, hasta, sucursalFiltro) {
         const usuario = folio.usuario || "Usuario Desconocido";
 
         const cumpleFecha = !desde || !hasta || (fechaCorta >= desde && fechaCorta <= hasta);
-        const cumpleSucursal = !sucursalFiltro || sucursal === sucursalFiltro;
+        // Case-insensitive comparison for sucursal
+        const cumpleSucursal = !sucursalFiltro || sucursal.toLowerCase() === sucursalFiltro.toLowerCase();
 
         if (cumpleFecha && cumpleSucursal && folio.actividades) {
             // Calculate aggregates
