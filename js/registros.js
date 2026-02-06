@@ -632,7 +632,7 @@ async function exportarPDFFolio(folioId) {
             const nombre = key.charAt(0).toUpperCase() + key.slice(1);
 
             // Check if we need a new page
-            const neededHeight = 60; // Estimated height for activity
+            const neededHeight = 100; // Estimated height for activity with larger images
             if (currentY + neededHeight > pageHeight - marginBottom) {
                 doc.addPage();
                 currentY = 20;
@@ -670,8 +670,8 @@ async function exportarPDFFolio(folioId) {
                 currentY += 5;
 
                 let xPos = 25;
-                const imgWidth = 40;
-                const imgHeight = 30;
+                const imgWidth = 100;
+                const imgHeight = 80;
 
                 for (const fotoUrl of act.fotos.slice(0, 3)) { // Max 3 photos per activity
                     if (xPos + imgWidth > 180) {
