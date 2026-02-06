@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <script>
+        (function () {
+            const theme = localStorage.getItem('helios-theme') || 'light';
+            document.documentElement.className = theme;
+        })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helios - Gestión de Actividades</title>
+    <link rel="icon" type="image/svg+xml" href="img/favicon_helios.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#3b82f6",
+                        "primary-hover": "#2563eb",
+                        success: "#10b981",
+                        warning: "#f59e0b",
+                        danger: "#ef4444",
+                        info: "#06b6d4",
+                        "background-light": "#f8fafc",
+                        "background-dark": "#0a0f1a",
+                        "surface-dark": "#111827",
+                        "card-dark": "#1e293b",
+                        "sidebar-dark": "#0f172a",
+                        accent: "#8b5cf6",
+                    },
+                    fontFamily: { display: ["Inter", "sans-serif"] },
+                    borderRadius: { DEFAULT: "0.75rem" },
+                },
+            },
+        };
+    </script>
+    <link rel="stylesheet" href="css/ui.css">
+</head>
+
+<body
+    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
+    <div class="flex min-h-screen">
+        <main class="flex-1 overflow-y-auto">
+            <!-- Header -->
+            <header class="p-6 lg:px-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Gestión de Actividades</h2>
+                    <p class="text-slate-500 dark:text-slate-400 mt-1">Administra las categorías de evaluación</p>
+                </div>
+                <button onclick="openModalActividad()"
+                    class="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-lg shadow-blue-500/20">
+                    <span class="material-icons-outlined">add_circle</span> Nueva Actividad
+                </button>
+            </header>
+
+            <!-- Filters -->
+            <div class="px-6 lg:px-10 mb-6">
+                <div
+                    class="bg-white dark:bg-card-dark p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap gap-4 items-end">
+                    <!-- Estado Filter -->
+                    <div class="flex-1 min-w-[160px] relative">
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Estado</label>
+                        <button type="button" onclick="toggleDropdown('dropdown-estado-menu')" id="btn-estado-filtro"
+                            class="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                            <span id="selected-estado-text">Todas</span>
+                            <span class="material-icons-outlined text-slate-400">expand_more</span>
+                        </button>
+                        <div id="dropdown-estado-menu"
+                            class="hidden absolute left-0 mt-2 w-full origin-top-left rounded-xl bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                            <div class="py-1">
+                                <button type="button" onclick="seleccionarFiltro('todas')"
+                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Todas</button>
+                                <button type="button" onclick="seleccionarFiltro('activas')"
+                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Activas</button>
+                                <button type="button" onclick="seleccionarFiltro('inactivas')"
+                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Inactivas</button>
+                            </div>
+                        </div>
+                        <input type="hidden" id="filtro-estado" value="todas">
+                    </div>
+
+                    <!-- Search -->
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Buscar</label>
+                        <div class="relative">
+                            <span
+                                class="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+                            <input type="text" id="buscar-actividad" placeholder="Buscar actividad..."
+                                oninput="filtrarActividades()"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-primary focus:border-primary">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activities Grid -->
+            <div class="px-6 lg:px-10 pb-10">
+                <div id="actividades-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <!-- Activities will be injected here -->
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="hidden text-center py-16">
+                    <span class="material-icons-outlined text-6xl text-slate-300 dark:text-slate-600 mb-4">category</span>
+                    <h3 class="text-lg font-semibold text-slate-500 dark:text-slate-400">No hay actividades</h3>
+                    <p class="text-slate-400 dark:text-slate-500 mt-1">Crea una nueva actividad para comenzar</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Nueva/Editar Actividad -->
+    <div id="modal-actividad"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-[100] p-4 overflow-y-auto">
+        <div id="modal-actividad-content"
+            class="bg-white dark:bg-card-dark rounded-3xl shadow-2xl w-full max-w-md transform transition-all duration-300 scale-95 opacity-0 my-8">
+            <!-- Header -->
+            <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+                <div class="flex items-center justify-between">
+                    <h3 id="modal-actividad-title" class="text-xl font-bold text-slate-800 dark:text-white">Nueva Actividad</h3>
+                    <button onclick="closeModalActividad()"
+                        class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
+                        <span class="material-icons-outlined text-slate-400">close</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form id="form-actividad" class="p-6 space-y-5">
+                <input type="hidden" id="actividad-id">
+                <input type="hidden" id="actividad-original-name">
+
+                <!-- Nombre -->
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Nombre de la
+                        Actividad *</label>
+                    <div class="relative">
+                        <span
+                            class="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">category</span>
+                        <input type="text" id="actividad-nombre" required placeholder="Ej: Limpieza"
+                            class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2">El nombre se guardará en minúsculas automáticamente</p>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit"
+                    class="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
+                    <span class="material-icons-outlined">save</span>
+                    <span id="btn-submit-text">Crear Actividad</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Confirmar Eliminación -->
+    <div id="modal-confirmar"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-[100] p-4">
+        <div id="modal-confirmar-content"
+            class="bg-white dark:bg-card-dark rounded-3xl shadow-2xl w-full max-w-sm transform transition-all duration-300 scale-95 opacity-0">
+            <div class="p-6 text-center">
+                <div class="w-16 h-16 rounded-full bg-danger/10 text-danger flex items-center justify-center mx-auto mb-4">
+                    <span class="material-icons-outlined text-3xl">delete_forever</span>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">¿Eliminar permanentemente?</h3>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mb-6">Esta acción no se puede deshacer. La actividad
+                    <strong id="nombre-eliminar" class="text-slate-700 dark:text-white"></strong> será eliminada
+                    permanentemente.
+                </p>
+                <input type="hidden" id="actividad-a-eliminar">
+                <div class="flex gap-3">
+                    <button onclick="closeModalConfirmar()"
+                        class="flex-1 py-3 px-4 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                        Cancelar
+                    </button>
+                    <button onclick="confirmarEliminar()"
+                        class="flex-1 py-3 px-4 rounded-xl bg-danger text-white font-semibold hover:bg-red-600 transition-colors">
+                        Eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-3"></div>
+
+    <!-- Scripts -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/actividades.js"></script>
+</body>
+
+</html>

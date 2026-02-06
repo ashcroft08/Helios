@@ -1,4 +1,19 @@
 // ADAPTED FOR FOLIOS STRUCTURE
+
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    cargarRegistros();
+
+    // Close dropdown when clicking outside
+    window.addEventListener('click', (e) => {
+        const container = document.getElementById('dropdown-sucursal-container');
+        const menu = document.getElementById('dropdown-sucursal-menu');
+        if (container && menu && !container.contains(e.target)) {
+            menu.classList.add('hidden');
+        }
+    });
+});
+
 function cargarRegistros() {
     const desde = document.getElementById("desde").value;
     const hasta = document.getElementById("hasta").value;
@@ -12,6 +27,12 @@ function cargarRegistros() {
 }
 
 function cargarSucursales(data) {
+    // Helper function to capitalize first letter
+    function capitalize(str) {
+        if (!str) return str;
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    }
+
     // Load ubicaciones from dedicated collection
     db.ref("ubicaciones").once("value").then(snapshot => {
         const ubicacionesData = snapshot.val();
@@ -40,9 +61,10 @@ function cargarSucursales(data) {
 
             listaSorted.forEach(loc => {
                 const item = document.createElement("button");
+                const displayName = capitalize(loc);
                 item.type = "button";
                 item.className = `w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between ${currentFiltroVal === loc ? 'text-primary font-semibold bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-600 dark:text-slate-300'}`;
-                item.innerHTML = `<span>${loc}</span>${currentFiltroVal === loc ? '<span class="material-icons-outlined text-sm">check</span>' : ''}`;
+                item.innerHTML = `<span>${displayName}</span>${currentFiltroVal === loc ? '<span class="material-icons-outlined text-sm">check</span>' : ''}`;
                 item.onclick = () => seleccionarSucursalFiltro(loc);
                 sucursalOptions.appendChild(item);
             });
@@ -56,7 +78,7 @@ function cargarSucursales(data) {
             listaSorted.forEach(loc => {
                 const opt = document.createElement("option");
                 opt.value = loc;
-                opt.textContent = loc;
+                opt.textContent = capitalize(loc);
                 formSelect.appendChild(opt);
             });
             if (currentFormValue) formSelect.value = currentFormValue;
@@ -75,7 +97,9 @@ function seleccionarSucursalFiltro(loc) {
     const menu = document.getElementById("dropdown-sucursal-menu");
 
     if (hiddenInput) hiddenInput.value = loc;
-    if (labelText) labelText.textContent = loc || "Todas las Sucursales";
+    // Capitalize for display
+    const displayName = loc ? loc.charAt(0).toUpperCase() + loc.slice(1).toLowerCase() : "Todas las Sucursales";
+    if (labelText) labelText.textContent = displayName;
     if (menu) menu.classList.add("hidden");
 
     cargarRegistros();

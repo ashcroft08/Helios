@@ -23,13 +23,20 @@ function initDashboard() {
     });
 }
 
-function toggleDropdown() {
+function toggleDropdown(event) {
+    event.stopPropagation();
     const menu = document.getElementById('dropdown-menu');
     menu.classList.toggle('hidden');
 }
 
 function poblarFiltroUbicacion(data) {
     const container = document.getElementById("dropdown-options");
+
+    // Helper function to capitalize first letter
+    function capitalize(str) {
+        if (!str) return str;
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    }
 
     // Load ubicaciones from dedicated collection
     db.ref("ubicaciones").once("value").then(snapshot => {
@@ -46,9 +53,10 @@ function poblarFiltroUbicacion(data) {
 
         options.forEach(loc => {
             const item = document.createElement("button");
+            const displayName = loc === "todos" ? "Todas las sucursales" : capitalize(loc);
             item.className = `w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between ${selectedUbicacion === loc ? 'text-primary font-semibold bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-600 dark:text-slate-300'}`;
             item.innerHTML = `
-                <span>${loc === "todos" ? "Todas las sucursales" : loc}</span>
+                <span>${displayName}</span>
                 ${selectedUbicacion === loc ? '<span class="material-icons-outlined text-sm">check</span>' : ''}
             `;
             item.onclick = () => seleccionarUbicacion(loc);
@@ -59,7 +67,9 @@ function poblarFiltroUbicacion(data) {
 
 function seleccionarUbicacion(loc) {
     selectedUbicacion = loc;
-    document.getElementById("selected-location").textContent = loc === "todos" ? "Todas las sucursales" : loc;
+    // Capitalize for display
+    const displayName = loc === "todos" ? "Todas las sucursales" : loc.charAt(0).toUpperCase() + loc.slice(1).toLowerCase();
+    document.getElementById("selected-location").textContent = displayName;
     document.getElementById("dropdown-menu").classList.add("hidden");
 
     // Refresh options to show checkmark
@@ -76,7 +86,8 @@ function filtrarPorUbicacion() {
         filteredData = {};
         Object.keys(allData).forEach(folioId => {
             const folio = allData[folioId];
-            if (folio.sucursal === ubicacion) {
+            // Case-insensitive comparison to handle mismatched casing
+            if (folio.sucursal && folio.sucursal.toLowerCase() === ubicacion.toLowerCase()) {
                 filteredData[folioId] = folio;
             }
         });

@@ -89,6 +89,12 @@ function initFlatpickr() {
 
 // Load sucursales from ubicaciones collection
 function cargarSucursales() {
+    // Helper function to capitalize first letter
+    function capitalize(str) {
+        if (!str) return str;
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    }
+
     db.ref("ubicaciones").once("value").then(snapshot => {
         const data = snapshot.val();
         if (!data) return;
@@ -115,17 +121,18 @@ function cargarSucursales() {
 
             sucursalesList.forEach(suc => {
                 const btn = document.createElement('button');
+                const displayName = capitalize(suc);
                 btn.type = 'button';
                 btn.className = 'w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between text-slate-600 dark:text-slate-300';
-                btn.innerHTML = `<span>${suc}</span>`;
-                btn.setAttribute('onclick', `seleccionarFiltro('sucursal', '${suc}', '${suc}')`);
+                btn.innerHTML = `<span>${displayName}</span>`;
+                btn.setAttribute('onclick', `seleccionarFiltro('sucursal', '${suc}', '${displayName}')`);
                 sucursalOptions.appendChild(btn);
             });
         }
 
         if (formSelect) {
             sucursalesList.forEach(suc => {
-                formSelect.innerHTML += `<option value="${suc}">${suc}</option>`;
+                formSelect.innerHTML += `<option value="${suc}">${capitalize(suc)}</option>`;
             });
         }
     });
