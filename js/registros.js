@@ -307,7 +307,7 @@ function verDetalle(folioId) {
                         ${act.fotos.map(url => `
                             <img src="${url}" alt="Evidencia" 
                                 class="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
-                                onclick="window.open('${url}', '_blank')">
+                                onclick="abrirModalImagen('${url}')">
                         `).join('')}
                     </div>
                 `;
@@ -380,9 +380,47 @@ function closeModalDetalle() {
     }, 300);
 }
 
+// Modal para ver imagen ampliada
+function abrirModalImagen(url) {
+    // Crear el modal si no existe
+    let modal = document.getElementById("modal-imagen-ampliada");
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "modal-imagen-ampliada";
+        modal.className = "fixed inset-0 bg-black/90 backdrop-blur-sm hidden items-center justify-center z-[200] p-4 cursor-pointer";
+        modal.onclick = function (e) {
+            if (e.target === modal) cerrarModalImagen();
+        };
+        modal.innerHTML = `
+            <div class="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center">
+                <button onclick="cerrarModalImagen()" 
+                    class="absolute -top-12 right-0 text-white hover:text-slate-300 transition-colors z-10">
+                    <span class="material-icons-outlined text-3xl">close</span>
+                </button>
+                <img id="imagen-ampliada-src" src="" alt="Imagen Ampliada" 
+                    class="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl">
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    // Establecer la imagen y mostrar el modal
+    document.getElementById("imagen-ampliada-src").src = url;
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+}
+
+function cerrarModalImagen() {
+    const modal = document.getElementById("modal-imagen-ampliada");
+    if (modal) {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+    }
+}
+
 function openFullImage() {
     const url = document.getElementById("detalle-foto").src;
-    if (url) window.open(url, '_blank');
+    if (url) abrirModalImagen(url);
 }
 
 function closeModal() {
