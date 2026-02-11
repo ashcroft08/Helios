@@ -24,11 +24,13 @@
     <!-- jQuery & DataTables -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css">
-    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script>
+    <script type="text/javascript" charset="utf8"
+        src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script>
 
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 
     <script>
         tailwind.config = {
@@ -127,14 +129,16 @@
                     class="bg-white dark:bg-card-dark p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap gap-4 items-end">
                     <!-- Fecha Desde -->
                     <div class="flex-1 min-w-[150px]">
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Desde</label>
+                        <label
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Desde</label>
                         <input type="date" id="filtro-desde"
                             class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:border-primary">
                     </div>
 
                     <!-- Fecha Hasta -->
                     <div class="flex-1 min-w-[150px]">
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Hasta</label>
+                        <label
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Hasta</label>
                         <input type="date" id="filtro-hasta"
                             class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:border-primary">
                     </div>
@@ -167,7 +171,8 @@
 
                     <!-- Usuario Filter -->
                     <div class="flex-1 min-w-[200px] relative">
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Usuario</label>
+                        <label
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Usuario</label>
                         <button type="button" onclick="toggleDropdown('dropdown-usuario-menu')" id="btn-usuario-filtro"
                             class="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
                             <span id="selected-usuario-text">Todos los usuarios</span>
@@ -200,15 +205,20 @@
                                 <tr>
                                     <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                         Usuario</th>
-                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
+                                    <th
+                                        class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
                                         Tipo</th>
-                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
+                                    <th
+                                        class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
                                         Fecha</th>
-                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
+                                    <th
+                                        class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
                                         Hora</th>
-                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
+                                    <th
+                                        class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
                                         Ubicación</th>
-                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
+                                    <th
+                                        class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
                                         Foto</th>
                                 </tr>
                             </thead>
@@ -223,7 +233,8 @@
     </div>
 
     <!-- Modal Ver Foto -->
-    <div id="modal-foto" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-[100] p-4"
+    <div id="modal-foto"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-[100] p-4"
         onclick="closeModalFoto()">
         <div class="max-w-2xl max-h-[90vh] relative">
             <button onclick="closeModalFoto()"
@@ -236,7 +247,8 @@
     </div>
 
     <!-- Modal Ver Mapa -->
-    <div id="modal-mapa" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-[100] p-4">
+    <div id="modal-mapa"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-[100] p-4">
         <div class="bg-white dark:bg-card-dark rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden">
             <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                 <h3 class="font-bold text-slate-800 dark:text-white">Ubicación de Marcación</h3>
@@ -255,6 +267,8 @@
 
     <!-- Scripts -->
     <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/auth-guard.js"></script>
     <script src="js/sidebar.js"></script>
     <script src="js/asistencia.js"></script>
 </body>

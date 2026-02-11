@@ -15,4 +15,4 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const db = firebase.database();
-const storage = firebase.storage();
+const storage = typeof firebase.storage === 'function' ? firebase.storage() : null;

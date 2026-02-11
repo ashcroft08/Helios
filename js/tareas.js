@@ -9,6 +9,7 @@ let sucursalesList = [];
 document.addEventListener('DOMContentLoaded', () => {
     cargarTareas();
     cargarSucursales();
+    cargarEncargados();
     initFlatpickr();
 
     // Form submission
@@ -135,6 +136,42 @@ function cargarSucursales() {
                 formSelect.innerHTML += `<option value="${suc}">${capitalize(suc)}</option>`;
             });
         }
+    });
+}
+
+// Load users for assignment dropdown
+function cargarEncargados() {
+    db.ref('usuarios').on('value', (snapshot) => {
+        const data = snapshot.val();
+        const select = document.getElementById('tarea-asignado');
+        if (!select || !data) return;
+
+        // Preserve current selection
+        const currentVal = select.value;
+
+        // Clear options except the placeholder
+        select.innerHTML = '<option value="">Seleccionar encargado</option>';
+
+        // Build sorted list of active users
+        const users = [];
+        Object.keys(data).forEach(uid => {
+            const u = data[uid];
+            if (u.activo !== false && u.rol === 'encargado') {
+                users.push({ uid, nombre: u.nombre || u.email, rol: u.rol });
+            }
+        });
+        users.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+        users.forEach(u => {
+            const rolLabel = u.rol === 'admin' ? 'Admin' : 'Encargado';
+            const option = document.createElement('option');
+            option.value = u.nombre;
+            option.textContent = `${u.nombre} (${rolLabel})`;
+            select.appendChild(option);
+        });
+
+        // Restore selection
+        if (currentVal) select.value = currentVal;
     });
 }
 
@@ -362,7 +399,7 @@ function guardarTarea(e) {
     } else {
         // Create new
         tareaData.fechaCreacion = new Date().toISOString();
-        tareaData.asignadoPor = 'Admin'; // Could be dynamic if you add auth
+        tareaData.asignadoPor = window.__heliosUser?.nombre || 'Admin';
 
         db.ref('tareas').push(tareaData)
             .then(() => {

@@ -51,20 +51,14 @@ function injectSidebar() {
             <!-- Header with Logo -->
             <div class="sidebar-header p-5 flex items-center justify-center">
                 <a href="index.html" class="flex items-center">
-                    <!-- Logo for expanded state - Light Mode -->
                     <img src="img/horizontal_helios.svg" alt="Helios" class="h-9 sidebar-logo-expanded sidebar-logo-light">
-                    <!-- Logo for expanded state - Dark Mode -->
                     <img src="img/horizontal_helios_oscuro.png" alt="Helios" class="h-9 sidebar-logo-expanded sidebar-logo-dark">
-                    <!-- Logo for collapsed state -->
                     <img src="img/favicon_helios.svg" alt="Helios" class="h-9 w-9 sidebar-logo-collapsed">
                 </a>
             </div>
 
-            <!-- Divider -->
-            <div class="mx-4 border-t border-slate-700/50 mb-4"></div>
-
             <!-- Navigation -->
-            <nav class="flex-1 px-3 space-y-1">
+            <nav class="flex-1 px-3 space-y-1 overflow-y-auto">
                 <a href="index.html" class="nav-link group flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activePage === 'index.html' ? 'bg-primary text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}">
                     <span class="material-icons-outlined">dashboard</span>
                     <span class="font-medium nav-text">Dashboard</span>
@@ -90,23 +84,47 @@ function injectSidebar() {
                     <span class="font-medium nav-text">Asistencia</span>
                     <span class="nav-tooltip">Asistencia</span>
                 </a>
+
+                <!-- Admin Only: Usuarios -->
+                <a href="usuarios.html" class="nav-link nav-admin-only group flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activePage === 'usuarios.html' ? 'bg-primary text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}" style="display:none">
+                    <span class="material-icons-outlined">group</span>
+                    <span class="font-medium nav-text">Usuarios</span>
+                    <span class="nav-tooltip">Usuarios</span>
+                </a>
             </nav>
 
-            <!-- Footer Section -->
-            <div class="mt-auto">
-                <!-- Divider -->
-                <div class="mx-4 border-t border-slate-700/50 mb-3"></div>
+            <!-- Footer: User Profile + Actions -->
+            <div class="mt-auto sidebar-footer">
+                <div class="mx-3 border-t border-slate-700/50 dark:border-slate-700/30"></div>
                 
-                <!-- Theme Switcher -->
-                <div class="px-3 pb-4">
-                    <button onclick="toggleTheme()" class="nav-link group w-full flex items-center space-x-3 py-3 px-4 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-all">
-                        <span class="material-icons-outlined text-xl" id="theme-toggle-icon">
+                <!-- User Profile Card -->
+                <div class="mx-3 mt-3 mb-2 p-3 rounded-xl sidebar-user-card sidebar-user-section">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-blue-400 flex items-center justify-center flex-shrink-0 shadow-md shadow-blue-500/20">
+                            <span class="material-icons-outlined text-white text-base">person</span>
+                        </div>
+                        <div class="min-w-0 nav-text flex-1">
+                            <p class="text-sm font-semibold truncate sidebar-user-name-text" id="sidebar-user-name">Cargando...</p>
+                            <p class="text-xs truncate sidebar-user-role-text" id="sidebar-user-role">---</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions Row -->
+                <div class="px-3 pb-4 flex items-center gap-1 sidebar-actions-row">
+                    <button onclick="toggleTheme()" class="nav-link group flex-1 flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-all" title="${document.documentElement.classList.contains('dark') ? 'Modo Claro' : 'Modo Oscuro'}">
+                        <span class="material-icons-outlined text-lg" id="theme-toggle-icon">
                             ${document.documentElement.classList.contains('dark') ? 'light_mode' : 'dark_mode'}
                         </span>
-                        <span class="font-medium nav-text" id="theme-toggle-text">
-                            ${document.documentElement.classList.contains('dark') ? 'Modo Claro' : 'Modo Oscuro'}
+                        <span class="font-medium text-sm nav-text" id="theme-toggle-text">
+                            ${document.documentElement.classList.contains('dark') ? 'Claro' : 'Oscuro'}
                         </span>
                         <span class="nav-tooltip">${document.documentElement.classList.contains('dark') ? 'Modo Claro' : 'Modo Oscuro'}</span>
+                    </button>
+                    <button onclick="logoutUser()" class="nav-link group flex-1 flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-red-400/70 hover:bg-red-500/10 hover:text-red-400 transition-all" title="Cerrar Sesión">
+                        <span class="material-icons-outlined text-lg">logout</span>
+                        <span class="font-medium text-sm nav-text">Salir</span>
+                        <span class="nav-tooltip">Cerrar Sesión</span>
                     </button>
                 </div>
             </div>
@@ -114,6 +132,12 @@ function injectSidebar() {
     `;
 
     document.body.insertAdjacentHTML('afterbegin', sidebarHTML);
+
+    // Sync with auth state if already loaded (prevents race condition)
+    if (window.__heliosUser && typeof updateSidebarUser === 'function') {
+        updateSidebarUser(window.__heliosUser);
+        applyRoleRestrictions(window.__heliosUser.rol);
+    }
 }
 
 function toggleCollapse() {

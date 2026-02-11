@@ -139,6 +139,50 @@
     display: block;
 }
 
+/* Collapsed state hides user profile section */
+.collapsed .sidebar-user-section {
+    display: none;
+}
+
+/* Sidebar User Card */
+.sidebar-user-card {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-user-name-text {
+    color: #f1f5f9;
+}
+
+.sidebar-user-role-text {
+    color: #94a3b8;
+}
+
+/* Collapsed: show centered avatar only, hide actions text */
+.collapsed .sidebar-actions-row {
+    flex-direction: column;
+}
+
+.collapsed .sidebar-actions-row .nav-text {
+    display: none;
+}
+
+/* Light theme sidebar footer */
+.light .sidebar-user-card {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.light .sidebar-user-name-text {
+    color: #1e293b;
+}
+
+.light .sidebar-user-role-text {
+    color: #64748b;
+}
+
+.light .sidebar-footer .border-t {
+    border-color: #e2e8f0;
+}
+
 /* ===== NAVIGATION TEXT & COLLAPSED STATE ===== */
 .collapsed .nav-text {
     display: none;
