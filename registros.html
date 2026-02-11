@@ -76,6 +76,12 @@
                     <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Registros del Personal</h2>
                     <p class="text-slate-500 dark:text-slate-400 mt-1">Gestiona y revisa las actividades diarias.</p>
                 </div>
+                <div>
+                    <button onclick="openModal()"
+                        class="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-lg shadow-blue-500/20">
+                        <span class="material-icons-outlined">add</span> Nuevo Folio
+                    </button>
+                </div>
             </header>
 
             <div class="px-6 lg:px-10 mb-8">
@@ -152,102 +158,71 @@
         </main>
     </div>
 
-    <!-- Modal Form -->
     <div id="modal-registro" class="fixed inset-0 z-[100] hidden">
-        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"></div>
-        <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white dark:bg-slate-800 shadow-2xl transition-transform duration-300 translate-x-full"
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="absolute inset-x-4 bottom-4 md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl bg-white dark:bg-slate-800 shadow-2xl rounded-3xl overflow-hidden transition-all duration-300 scale-95 opacity-0 flex flex-col max-h-[90vh]"
             id="modal-content">
-            <div class="p-6 h-full flex flex-col">
-                <div class="flex items-center justify-between mb-8">
-                    <h3 class="text-xl font-bold dark:text-white" id="modal-title">Nuevo Registro</h3>
+
+            <div class="w-full bg-slate-100 dark:bg-slate-900 h-1.5 flex">
+                <div id="form-progress" class="bg-primary h-full transition-all duration-500 w-0"></div>
+            </div>
+
+            <div class="p-6 overflow-y-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 class="text-xl font-bold dark:text-white" id="modal-title">Nuevo Folio</h3>
+                        <p class="text-xs text-slate-500 mt-1" id="step-indicator">Paso 1 de 7: Información General</p>
+                    </div>
                     <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
                         <span class="material-icons-outlined text-2xl">close</span>
                     </button>
                 </div>
 
-                <form id="form-registro" class="flex-1 overflow-y-auto space-y-6 pr-2">
-                    <input type="hidden" id="edit-uid">
+                <form id="form-registro" class="space-y-6">
                     <input type="hidden" id="edit-id">
 
-                    <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Correo del
-                            Personal</label>
-                        <input type="email" id="form-correo" required
-                            class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl focus:ring-primary focus:border-primary px-4 py-3">
-                    </div>
-
-                    <div>
-                        <label
-                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Actividad</label>
-                        <select id="form-actividad" required
-                            class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl focus:ring-primary focus:border-primary px-4 py-3">
-                            <option value="Limpieza">Limpieza</option>
-                            <option value="Mantenimiento">Mantenimiento</option>
-                            <option value="Seguridad">Seguridad</option>
-                            <option value="Supervisión">Supervisión</option>
-                            <option value="Otros">Otros</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label
-                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Sucursal</label>
-                        <select id="form-sucursal" required
-                            class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl focus:ring-primary focus:border-primary px-4 py-3">
-                            <option value="">Cargando...</option>
-                        </select>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label
-                                class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Fecha</label>
-                            <input type="date" id="form-fecha" required placeholder="Seleccione fecha"
-                                class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl focus:ring-primary focus:border-primary px-4 py-3">
-                        </div>
-                        <div>
-                            <label
-                                class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Puntuación</label>
-                            <input type="number" id="form-puntuacion" min="1" max="10" required
-                                class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl focus:ring-primary focus:border-primary px-4 py-3"
-                                placeholder="1-10">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label
-                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Comentarios</label>
-                        <textarea id="form-comentarios" rows="3"
-                            class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl focus:ring-primary focus:border-primary px-4 py-3"></textarea>
-                    </div>
-
-                    <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Evidencia
-                            Fotográfica</label>
-                        <div class="relative group">
-                            <input type="file" id="form-foto-file" accept="image/*"
-                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-                            <div
-                                class="w-full bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl px-4 py-8 text-center transition-all group-hover:border-primary">
-                                <span
-                                    class="material-icons-outlined text-slate-400 group-hover:text-primary mb-2 block text-3xl">cloud_upload</span>
-                                <p class="text-sm text-slate-500" id="foto-label">Haz clic o arrastra una imagen</p>
+                    <!-- STEP 0: INFO GENERAL -->
+                    <div class="form-step" data-step="0">
+                        <div class="space-y-4">
+                            <div>
+                                <label
+                                    class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Supervisor
+                                    / Usuario</label>
+                                <input type="text" id="form-correo" readonly
+                                    class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-medium opacity-70">
+                            </div>
+                            <div>
+                                <label
+                                    class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Sucursal</label>
+                                <select id="form-sucursal" required
+                                    class="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:border-primary">
+                                    <option value="">Seleccione Sucursal</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Fecha</label>
+                                <input type="date" id="form-fecha" required
+                                    class="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:border-primary">
                             </div>
                         </div>
-                        <div id="foto-preview"
-                            class="mt-4 hidden h-32 w-full rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700">
-                            <img src="" alt="Preview" class="w-full h-full object-cover">
-                        </div>
-                        <input type="hidden" id="form-foto-url">
                     </div>
-                </form>
 
-                <div class="pt-6 border-t dark:border-slate-700">
-                    <button type="submit" form="form-registro"
-                        class="w-full bg-primary hover:bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all">
-                        Guardar Registro
-                    </button>
-                </div>
+                    <div id="dynamic-steps-container"></div>
+                </form>
+            </div>
+
+            <div
+                class="p-6 border-t dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 flex justify-between items-center">
+                <button type="button" id="btn-prev" onclick="changeStep(-1)"
+                    class="hidden bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-6 py-2.5 rounded-xl font-bold transition-all hover:bg-slate-200">
+                    Anterior
+                </button>
+                <div class="flex-1"></div>
+                <button type="button" id="btn-next" onclick="changeStep(1)"
+                    class="bg-primary hover:bg-primary-hover text-white px-8 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20">
+                    Siguiente
+                </button>
             </div>
         </div>
     </div>

@@ -54,7 +54,7 @@ function renderUsuarios() {
         const rolBadge = u.rol === 'admin'
             ? '<span class="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full bg-accent/10 text-accent"><span class="material-icons-outlined text-sm">admin_panel_settings</span>Admin</span>'
             : u.rol === 'encargado'
-                ? '<span class="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full bg-success/10 text-success"><span class="material-icons-outlined text-sm">badge</span>Encargado</span>'
+                ? '<span class="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full bg-success/10 text-success"><span class="material-icons-outlined text-sm">badge</span>Supervisor/a</span>'
                 : '<span class="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full bg-warning/10 text-warning"><span class="material-icons-outlined text-sm">help_outline</span>Sin rol</span>';
 
         const estadoBadge = u.activo !== false
@@ -108,7 +108,9 @@ function renderUsuarios() {
 function updateStats() {
     document.getElementById('stat-total').textContent = usuariosData.length;
     document.getElementById('stat-admins').textContent = usuariosData.filter(u => u.rol === 'admin').length;
-    document.getElementById('stat-encargados').textContent = usuariosData.filter(u => u.rol === 'encargado').length;
+    const supervisorCount = usuariosData.filter(u => u.rol === 'encargado').length;
+    const statSupervisores = document.getElementById('stat-supervisores') || document.getElementById('stat-encargados');
+    if (statSupervisores) statSupervisores.textContent = supervisorCount;
 }
 
 // ── Open Modal (Create User with Auth) ─────────────────────────
@@ -209,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const nameEl = document.getElementById('sidebar-user-name');
                     const roleEl = document.getElementById('sidebar-user-role');
                     if (nameEl) nameEl.textContent = nombre;
-                    if (roleEl) roleEl.textContent = rol === 'admin' ? 'Administrador' : 'Encargado/a';
+                    if (roleEl) roleEl.textContent = rol === 'admin' ? 'Administrador' : 'Supervisor/a';
                 }
             } catch (err) {
                 errorText.textContent = 'Error al actualizar el usuario';

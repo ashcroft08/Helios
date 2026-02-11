@@ -1,6 +1,6 @@
-// Adaptado para estructura de folios
+// Variables globales para mapeo y estado
+let userMap = {};
 
-// Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
     cargarRegistros();
 
@@ -19,10 +19,21 @@ function cargarRegistros() {
     const hasta = document.getElementById("hasta").value;
     const sucursal = document.getElementById("filtro-sucursal").value;
 
-    db.ref("folios").once("value").then(snapshot => {
-        const data = snapshot.val();
-        cargarSucursales(data);
-        mostrarTabla(data, desde, hasta, sucursal);
+    // Obtener mapeo de usuarios para mostrar nombres en lugar de correos
+    db.ref("usuarios").once("value").then(userSnapshot => {
+        const usersData = userSnapshot.val() || {};
+        userMap = {};
+        Object.values(usersData).forEach(u => {
+            if (u.email && u.nombre) {
+                userMap[u.email.toLowerCase()] = u.nombre;
+            }
+        });
+
+        db.ref("folios").once("value").then(snapshot => {
+            const data = snapshot.val();
+            cargarSucursales(data);
+            mostrarTabla(data, desde, hasta, sucursal);
+        });
     });
 }
 
@@ -125,7 +136,11 @@ function mostrarTabla(data, desde, hasta, sucursalFiltro) {
         const folio = data[folioId];
         const fechaCorta = folio.fecha ? folio.fecha.substring(0, 10) : "";
         const sucursal = folio.sucursal || "General";
-        const usuario = folio.usuario || "Usuario Desconocido";
+        const rawUsuario = folio.usuario || "Usuario Desconocido";
+
+        // Mapear correo a nombre usando el mapa con los datos de Firebase
+        const usuario = userMap[rawUsuario.toLowerCase()] || rawUsuario;
+
 
         const cumpleFecha = !desde || !hasta || (fechaCorta >= desde && fechaCorta <= hasta);
         // Case-insensitive comparison for sucursal
@@ -141,13 +156,21 @@ function mostrarTabla(data, desde, hasta, sucursalFiltro) {
             });
             const promedio = numActividades > 0 ? (sumaPuntaje / numActividades).toFixed(1) : "0";
 
+            // ROLE FILTER: If not admin, only show own folios
+            const isOwner = (rawUsuario.toLowerCase() === window.__heliosUser?.nombre?.toLowerCase()) ||
+                (rawUsuario.toLowerCase() === window.__heliosUser?.email?.toLowerCase());
+
+            if (window.__heliosUser?.rol !== 'admin' && !isOwner) {
+                return;
+            }
+
             const tr = document.createElement("tr");
             tr.className = "hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors border-b border-slate-100 dark:border-slate-800";
             tr.innerHTML = `
                 <td class="px-6 py-4">
                     <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
-                            ${usuario.substring(0, 2).toUpperCase()}
+                        <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs uppercase">
+                            ${usuario.substring(0, 2)}
                         </div>
                         <span class="text-sm font-medium dark:text-white">${usuario}</span>
                     </div>
@@ -236,32 +259,264 @@ function showToast(message, type = 'success') {
 }
 
 // Control de modales
+// Control de modales con Wizard
 function openModal(isEdit = false) {
     const modal = document.getElementById("modal-registro");
     const content = document.getElementById("modal-content");
-    const title = document.getElementById("modal-title");
+
+    // Reset wizard
+    currentStep = 0;
+    Object.keys(pendingPhotos).forEach(key => delete pendingPhotos[key]);
+    if (typeof initMultiStepForm === 'function') initMultiStepForm();
+    if (typeof updateStepUI === 'function') updateStepUI();
 
     if (modal) modal.classList.remove("hidden");
     if (content) {
         setTimeout(() => {
-            content.classList.remove("translate-x-full");
+            content.classList.remove("scale-95", "opacity-0");
         }, 10);
+        content.classList.add("scale-100", "opacity-100");
     }
 
     if (!isEdit) {
-        if (title) title.textContent = "Nuevo Registro";
         const form = document.getElementById("form-registro");
         if (form) form.reset();
-
-        document.getElementById("edit-uid").value = "";
         document.getElementById("edit-id").value = "";
-        const preview = document.getElementById("foto-preview");
-        if (preview) preview.classList.add("hidden");
-        const label = document.getElementById("foto-label");
-        if (label) label.textContent = "Haz clic o arrastra una imagen";
-        document.getElementById("form-foto-url").value = "";
+
+        // Auto-asignar nombre del supervisor
+        const correoInput = document.getElementById('form-correo');
+        if (correoInput && window.__heliosUser) {
+            correoInput.value = window.__heliosUser.nombre || window.__heliosUser.email;
+        }
+    }
+}
+
+function closeModal() {
+    const modal = document.getElementById("modal-registro");
+    const content = document.getElementById("modal-content");
+    if (content) {
+        content.classList.remove("scale-100", "opacity-100");
+        content.classList.add("scale-95", "opacity-0");
+    }
+    setTimeout(() => {
+        if (modal) modal.classList.add("hidden");
+    }, 200);
+}
+
+// Configuración de Actividades del Folio
+const ACTIVIDADES_FOLIO = [
+    { id: 'atencion', label: 'Atención' },
+    { id: 'bodega', label: 'Bodega' },
+    { id: 'legumbres', label: 'Legumbres' },
+    { id: 'limpieza', label: 'Limpieza' },
+    { id: 'neveras', label: 'Neveras' },
+    { id: 'perchado', label: 'Perchado' }
+];
+
+let currentStep = 0;
+const totalSteps = ACTIVIDADES_FOLIO.length + 1; // Info General + 6 Actividades
+
+// Inicializar UI del formulario multi-pasos
+function initMultiStepForm() {
+    const container = document.getElementById('dynamic-steps-container');
+    if (!container) return;
+
+    container.innerHTML = ACTIVIDADES_FOLIO.map((act, index) => `
+        <div class="form-step hidden" data-step="${index + 1}">
+            <div class="space-y-6">
+                <div class="bg-primary/5 p-4 rounded-2xl border border-primary/10 mb-2 text-center">
+                    <h4 class="text-sm font-bold text-primary uppercase tracking-widest">${act.label}</h4>
+                </div>
+                
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 block">Puntuación (1-10)</label>
+                    <div class="flex flex-wrap gap-2 justify-center">
+                        ${Array.from({ length: 10 }, (_, i) => i + 1).map(num => `
+                            <button type="button" onclick="setScore('${act.id}', ${num})" 
+                                data-score-btn="${act.id}-${num}"
+                                class="score-btn w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold hover:bg-primary/10 transition-all dark:text-white">
+                                ${num}
+                            </button>
+                        `).join('')}
+                    </div>
+                    <input type="hidden" id="score-${act.id}" name="${act.id}-puntuacion" value="0">
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Comentario</label>
+                    <textarea id="comment-${act.id}" name="${act.id}-comentario" rows="3"
+                        class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:border-primary resize-none"
+                        placeholder="Observaciones de ${act.label}..."></textarea>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Fotos de Evidencia</label>
+                    <div class="grid grid-cols-3 md:grid-cols-4 gap-3" id="preview-grid-${act.id}">
+                        <div class="relative group aspect-square">
+                            <input type="file" onchange="handleFileSelect(event, '${act.id}')" accept="image/*" multiple
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                            <div class="w-full h-full bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center transition-all group-hover:border-primary">
+                                <span class="material-icons-outlined text-slate-400 group-hover:text-primary text-2xl">add_a_photo</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Alternar Botón de Puntuación
+function setScore(actId, score) {
+    const input = document.getElementById(`score-${actId}`);
+    if (input) input.value = score;
+
+    document.querySelectorAll(`[data-score-btn^="${actId}-"]`).forEach(btn => {
+        btn.classList.remove('bg-primary', 'text-white', 'border-primary');
+        btn.classList.add('border-slate-200', 'dark:border-slate-700');
+    });
+    const selected = document.querySelector(`[data-score-btn="${actId}-${score}"]`);
+    if (selected) {
+        selected.classList.add('bg-primary', 'text-white', 'border-primary');
+        selected.classList.remove('border-slate-200', 'dark:border-slate-700');
+    }
+}
+
+// Gestión de Archivos Múltiples
+const pendingPhotos = {}; // actId -> File[]
+
+function handleFileSelect(event, actId) {
+    const files = Array.from(event.target.files);
+    if (!pendingPhotos[actId]) pendingPhotos[actId] = [];
+
+    files.forEach(file => {
+        pendingPhotos[actId].push(file);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const grid = document.getElementById(`preview-grid-${actId}`);
+            const div = document.createElement('div');
+            div.className = 'relative aspect-square rounded-xl overflow-hidden border border-slate-200 group';
+            div.innerHTML = `
+                <img src="${e.target.result}" class="w-full h-full object-cover">
+                <button type="button" onclick="removePendingPhoto('${actId}', ${pendingPhotos[actId].length - 1}, this)" 
+                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-100 transition-opacity">
+                    <span class="material-icons-outlined text-[10px]">close</span>
+                </button>
+            `;
+            grid.insertBefore(div, grid.firstChild);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function removePendingPhoto(actId, index, btn) {
+    pendingPhotos[actId].splice(index, 1);
+    btn.parentElement.remove();
+}
+
+// Navegación de Pasos
+function changeStep(delta) {
+    if (delta === 1 && !validateStep(currentStep)) return;
+
+    const steps = document.querySelectorAll('.form-step');
+    steps[currentStep].classList.add('hidden');
+
+    currentStep += delta;
+
+    if (currentStep >= totalSteps) {
+        currentStep = totalSteps - 1;
+        guardarFolioCompleto();
+        return;
+    }
+
+    steps[currentStep].classList.remove('hidden');
+    updateStepUI();
+}
+
+function updateStepUI() {
+    const progress = (currentStep / (totalSteps - 1)) * 100;
+    const progressBar = document.getElementById('form-progress');
+    if (progressBar) progressBar.style.width = `${progress}%`;
+
+    const indicator = document.getElementById('step-indicator');
+    if (indicator) {
+        const stepLabel = currentStep === 0 ? 'Información General' : ACTIVIDADES_FOLIO[currentStep - 1].label;
+        indicator.textContent = `Paso ${currentStep + 1} de ${totalSteps}: ${stepLabel}`;
+    }
+
+    const btnPrev = document.getElementById('btn-prev');
+    if (btnPrev) btnPrev.classList.toggle('hidden', currentStep === 0);
+
+    const btnNext = document.getElementById('btn-next');
+    if (btnNext) btnNext.textContent = currentStep === totalSteps - 1 ? 'Finalizar Folio' : 'Siguiente';
+}
+
+function validateStep(step) {
+    if (step === 0) {
+        const sucursal = document.getElementById('form-sucursal').value;
+        const fecha = document.getElementById('form-fecha').value;
+        if (!sucursal || !fecha) {
+            showToast('Por favor completa los datos generales', 'warning');
+            return false;
+        }
     } else {
-        if (title) title.textContent = "Editar Registro";
+        const actId = ACTIVIDADES_FOLIO[step - 1].id;
+        const score = document.getElementById(`score-${actId}`).value;
+        if (score === "0") {
+            showToast(`Por favor califica la actividad: ${ACTIVIDADES_FOLIO[step - 1].label}`, 'warning');
+            return false;
+        }
+    }
+    return true;
+}
+
+// Lógica de guardado principal
+async function guardarFolioCompleto() {
+    const btn = document.getElementById('btn-next');
+    const originalText = btn.textContent;
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="material-icons-outlined animate-spin mr-2">refresh</span> Guardando...`;
+
+        const idEdit = document.getElementById("edit-id").value;
+        const folioData = {
+            usuario: document.getElementById("form-correo").value,
+            sucursal: document.getElementById("form-sucursal").value,
+            fecha: document.getElementById("form-fecha").value + "T12:00:00",
+            actividades: {}
+        };
+
+        // Subir fotos y recolectar datos
+        for (const act of ACTIVIDADES_FOLIO) {
+            let photoUrls = [];
+            const files = pendingPhotos[act.id] || [];
+
+            for (const file of files) {
+                const ref = storage.ref(`fotos_folios/${Date.now()}_${file.name}`);
+                const snap = await ref.put(file);
+                const url = await snap.ref.getDownloadURL();
+                photoUrls.push(url);
+            }
+
+            folioData.actividades[act.id] = {
+                puntuacion: parseInt(document.getElementById(`score-${act.id}`).value),
+                comentario: document.getElementById(`comment-${act.id}`).value,
+                fotos: photoUrls
+            };
+        }
+
+        const ref = idEdit ? db.ref(`folios/${idEdit}`) : db.ref(`folios`).push();
+        await ref.set(folioData);
+
+        showToast(idEdit ? "Folio actualizado" : "Folio creado con éxito");
+        closeModal();
+        cargarRegistros();
+    } catch (err) {
+        showToast("Error: " + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
     }
 }
 
@@ -454,39 +709,6 @@ if (document.getElementById("form-foto-file")) {
     });
 }
 
-// Preparar edición
-function prepararEdicion(uid, id) {
-    db.ref(`registros/${uid}/${id}`).once("value").then(snapshot => {
-        const r = snapshot.val();
-        if (!r) return;
-
-        document.getElementById("edit-uid").value = uid;
-        document.getElementById("edit-id").value = id;
-        document.getElementById("form-correo").value = r.correo || "";
-        document.getElementById("form-actividad").value = r.actividad || "Limpieza";
-        document.getElementById("form-sucursal").value = r.ubicacion || "";
-        document.getElementById("form-fecha").value = r.fecha ? r.fecha.substring(0, 10) : "";
-        document.getElementById("form-puntuacion").value = r.puntuacion || 0;
-        document.getElementById("form-comentarios").value = r.comentario || "";
-
-        const photoUrl = (r.fotos && r.fotos[0]) || "";
-        document.getElementById("form-foto-url").value = photoUrl;
-
-        const preview = document.getElementById("foto-preview");
-        if (preview) {
-            if (photoUrl) {
-                preview.querySelector("img").src = photoUrl;
-                preview.classList.remove("hidden");
-                const label = document.getElementById("foto-label");
-                if (label) label.textContent = "Imagen actual cargada";
-            } else {
-                preview.classList.add("hidden");
-            }
-        }
-
-        openModal(true);
-    });
-}
 
 // Lógica de guardado con almacenamiento
 const formRegistro = document.getElementById("form-registro");
@@ -513,20 +735,37 @@ if (formRegistro) {
             const uidEdit = document.getElementById("edit-uid").value;
             const idEdit = document.getElementById("edit-id").value;
 
-            const data = {
-                correo: document.getElementById("form-correo").value,
-                actividad: document.getElementById("form-actividad").value,
-                ubicacion: document.getElementById("form-sucursal").value,
-                fecha: document.getElementById("form-fecha").value + " 00:00:00",
-                puntuacion: parseInt(document.getElementById("form-puntuacion").value),
+            // Prepare activity data
+            const actividadNombre = document.getElementById("form-actividad").value;
+            const actividadKey = actividadNombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+            const commonData = {
+                usuario: document.getElementById("form-correo").value,
+                sucursal: document.getElementById("form-sucursal").value,
+                fecha: document.getElementById("form-fecha").value + " 00:00:00"
+            };
+
+            const actividadData = {
                 comentario: document.getElementById("form-comentarios").value,
+                puntuacion: parseInt(document.getElementById("form-puntuacion").value),
                 fotos: photoUrl ? [photoUrl] : []
             };
 
-            const targetUid = uidEdit || "staff_admin";
-            const ref = idEdit ? db.ref(`registros/${targetUid}/${idEdit}`) : db.ref(`registros/${targetUid}`).push();
+            if (idEdit) {
+                // Update existing folio
+                await db.ref(`folios/${idEdit}`).update(commonData);
+                await db.ref(`folios/${idEdit}/actividades/${actividadKey}`).set(actividadData);
+            } else {
+                // Create new folio
+                const newFolioRef = db.ref(`folios`).push();
+                await newFolioRef.set({
+                    ...commonData,
+                    actividades: {
+                        [actividadKey]: actividadData
+                    }
+                });
+            }
 
-            await ref.set(data);
             showToast(idEdit ? "Registro actualizado correctamente" : "Registro creado correctamente");
             closeModal();
             cargarRegistros();
@@ -617,7 +856,7 @@ async function exportarPDFFolio(folioId) {
         doc.setFillColor(248, 250, 252);
         doc.roundedRect(15, 50, 180, 35, 3, 3, 'F');
 
-        doc.setTextColor(100);
+        doc.setTextColor(110);
         doc.setFontSize(8);
         doc.text("USUARIO", 25, 60);
         doc.text("SUCURSAL", 80, 60);
@@ -626,7 +865,12 @@ async function exportarPDFFolio(folioId) {
         doc.setTextColor(30, 41, 59);
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
-        doc.text(folio.usuario || "Desconocido", 25, 68);
+
+        // Usar nombre en lugar de correo si está en el mapa
+        const rawUsuario = folio.usuario || "Desconocido";
+        const displayNombre = userMap[rawUsuario.toLowerCase()] || rawUsuario;
+
+        doc.text(displayNombre, 25, 68);
         doc.text(folio.sucursal || "General", 80, 68);
         doc.text(folio.fecha ? folio.fecha.substring(0, 10) : "", 135, 68);
 

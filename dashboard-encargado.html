@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <script>
+        (function () {
+            const theme = localStorage.getItem('helios-theme') || 'light';
+            document.documentElement.className = theme;
+        })();
+    </script>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Helios - Dashboard de Supervisor/a</title>
+    <link rel="icon" type="image/svg+xml" href="img/favicon_helios.svg">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#3b82f6",
+                        "primary-hover": "#2563eb",
+                        success: "#10b981",
+                        warning: "#f59e0b",
+                        danger: "#ef4444",
+                        info: "#06b6d4",
+                        "background-light": "#f8fafc",
+                        "background-dark": "#0a0f1a",
+                        "surface-dark": "#111827",
+                        "card-dark": "#1e293b",
+                        "sidebar-dark": "#0f172a",
+                        accent: "#8b5cf6",
+                    },
+                    fontFamily: { display: ["Inter", "sans-serif"] },
+                    borderRadius: { DEFAULT: "0.75rem" },
+                },
+            },
+        };
+    </script>
+    <link rel="stylesheet" href="css/ui.css">
+</head>
+
+<body
+    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
+    <div class="flex min-h-screen">
+        <main class="flex-1 overflow-y-auto">
+            <header class="p-6 lg:px-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800 dark:text-white" id="welcome-message">¡Hola!</h2>
+                    <p class="text-slate-500 dark:text-slate-400 mt-1">Este es tu resumen de actividades y tareas para
+                        hoy.</p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="asistencia.html"
+                        class="bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20">
+                        <span class="material-icons-outlined">fingerprint</span> Marcar Asistencia
+                    </a>
+                    <a href="registros.html"
+                        class="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-lg shadow-blue-500/20">
+                        <span class="material-icons-outlined">add</span> Nuevo Folio
+                    </a>
+                </div>
+            </header>
+
+            <!-- KPIs -->
+            <div class="px-6 lg:px-10 grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <!-- Tareas Pendientes -->
+                <div
+                    class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                            Tareas Pendientes</p>
+                        <h3 class="text-3xl font-bold mt-1 dark:text-white" id="kpi-tareas-pendientes">0</h3>
+                        <p class="text-xs text-amber-500 font-semibold mt-2" id="kpi-tareas-info">Tienes trabajo
+                            pendiente</p>
+                    </div>
+                    <div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-2xl">
+                        <span class="material-icons-outlined text-amber-500 text-3xl">assignment_late</span>
+                    </div>
+                </div>
+
+                <!-- Folios Realizados -->
+                <div
+                    class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Mis
+                            Registros</p>
+                        <h3 class="text-3xl font-bold mt-1 dark:text-white" id="kpi-mis-registros">0</h3>
+                        <p class="text-xs text-blue-500 font-semibold mt-2">Folios creados por ti</p>
+                    </div>
+                    <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-2xl">
+                        <span class="material-icons-outlined text-primary text-3xl">history</span>
+                    </div>
+                </div>
+
+                <!-- Estado del Día -->
+                <div
+                    class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                            Estado hoy</p>
+                        <h3 class="text-xl font-bold mt-1 dark:text-white" id="kpi-estado-hoy">Pendiente</h3>
+                        <p class="text-xs text-emerald-500 font-semibold mt-2" id="kpi-estado-info">¡Ánimo con el día!
+                        </p>
+                    </div>
+                    <div class="p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl">
+                        <span class="material-icons-outlined text-emerald-500 text-3xl">today</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="px-6 lg:px-10 grid grid-cols-1 xl:grid-cols-2 gap-8 mb-10">
+                <!-- Próximas Tareas -->
+                <div
+                    class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between mb-6">
+                        <h4 class="text-lg font-bold dark:text-white">Mis Tareas Asignadas</h4>
+                        <a href="tareas.html" class="text-sm text-primary font-semibold hover:underline">Ver todas</a>
+                    </div>
+                    <div id="lista-tareas-encargado" class="space-y-4">
+                        <!-- Tareas will be injected here -->
+                        <div class="flex items-center justify-center py-10 text-slate-400">
+                            <p>Cargando tareas...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Últimos Registros Propios -->
+                <div
+                    class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between mb-6">
+                        <h4 class="text-lg font-bold dark:text-white">Mis Últimos Folios</h4>
+                        <a href="registros.html" class="text-sm text-primary font-semibold hover:underline">Ver
+                            historial</a>
+                    </div>
+                    <div id="lista-folios-encargado" class="space-y-4">
+                        <!-- Folios will be injected here -->
+                        <div class="flex items-center justify-center py-10 text-slate-400">
+                            <p>Cargando registros...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/dashboard-encargado.js"></script>
+</body>
+
+</html>

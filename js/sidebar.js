@@ -59,7 +59,7 @@ function injectSidebar() {
 
             <!-- Navigation -->
             <nav class="flex-1 px-3 space-y-1 overflow-y-auto">
-                <a href="index.html" class="nav-link group flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activePage === 'index.html' ? 'bg-primary text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}">
+                <a href="${window.__heliosUser?.rol === 'encargado' ? 'dashboard-encargado.html' : 'index.html'}" class="nav-link group flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${(activePage === 'index.html' || activePage === 'dashboard-encargado.html') ? 'bg-primary text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}">
                     <span class="material-icons-outlined">dashboard</span>
                     <span class="font-medium nav-text">Dashboard</span>
                     <span class="nav-tooltip">Dashboard</span>

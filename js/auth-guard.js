@@ -128,6 +128,21 @@ if (cachedUser) {
             updateSidebarUser(window.__heliosUser);
             removeOverlay();
 
+            // Handle Dashboard auto-redirection
+            const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+            if (currentPage === 'index.html' && window.__heliosUser.rol === 'encargado') {
+                window.location.href = 'dashboard-encargado.html';
+                return;
+            }
+            if (currentPage === 'dashboard-encargado.html' && window.__heliosUser.rol === 'admin') {
+                window.location.href = 'index.html';
+                return;
+            }
+            if (currentPage === 'usuarios.html' && window.__heliosUser.rol !== 'admin') {
+                window.location.href = 'index.html';
+                return;
+            }
+
             // Only dispatch if we didn't already dispatch from cache
             if (!hasCachedUser) {
                 window.dispatchEvent(new CustomEvent('helios-auth-ready', { detail: window.__heliosUser }));
@@ -174,7 +189,7 @@ function updateSidebarUser(userData) {
     }
 
     if (userRoleEl) {
-        const roleLabels = { admin: 'Administrador', encargado: 'Encargado/a' };
+        const roleLabels = { admin: 'Administrador', encargado: 'Supervisor/a' };
         userRoleEl.textContent = roleLabels[userData.rol] || userData.rol;
     }
 

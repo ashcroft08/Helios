@@ -163,7 +163,7 @@ function cargarEncargados() {
         users.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
         users.forEach(u => {
-            const rolLabel = u.rol === 'admin' ? 'Admin' : 'Encargado';
+            const rolLabel = u.rol === 'admin' ? 'Admin' : 'Supervisor/a';
             const option = document.createElement('option');
             option.value = u.nombre;
             option.textContent = `${u.nombre} (${rolLabel})`;
@@ -224,6 +224,12 @@ function filtrarTareas() {
         if (estadoFiltro && tarea.estado !== estadoFiltro) return;
         if (prioridadFiltro && tarea.prioridad !== prioridadFiltro) return;
         if (sucursalFiltro && tarea.sucursal?.toLowerCase() !== sucursalFiltro.toLowerCase()) return;
+
+        // ROLE FILTER: If not admin, only show assigned tasks
+        if (window.__heliosUser?.rol !== 'admin' && tarea.asignadoA !== window.__heliosUser?.nombre) {
+            return;
+        }
+
         if (busqueda && !tarea.titulo.toLowerCase().includes(busqueda) &&
             !tarea.asignadoA.toLowerCase().includes(busqueda)) return;
 
@@ -310,14 +316,21 @@ function crearTarjetaTarea(tarea) {
                     <button onclick="verTareaCompletada('${tarea.id}')" class="flex-1 py-2 px-3 rounded-lg bg-success/10 text-success text-sm font-medium hover:bg-success/20 transition-colors flex items-center justify-center gap-1">
                         <span class="material-icons-outlined text-sm">visibility</span> Ver evidencia
                     </button>
-                ` : `
+                ` : window.__heliosUser?.rol === 'admin' ? `
                     <button onclick="editarTarea('${tarea.id}')" class="flex-1 py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-1">
                         <span class="material-icons-outlined text-sm">edit</span> Editar
                     </button>
+                ` : `
+                    <button onclick="abrirModalCompletar('${tarea.id}')" class="flex-1 py-2 px-3 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors flex items-center justify-center gap-1">
+                        <span class="material-icons-outlined text-sm">check_circle</span> Completar
+                    </button>
                 `}
+                
+                ${window.__heliosUser?.rol === 'admin' ? `
                 <button onclick="eliminarTarea('${tarea.id}')" class="py-2 px-3 rounded-lg text-danger hover:bg-danger/10 transition-colors">
                     <span class="material-icons-outlined text-sm">delete</span>
                 </button>
+                ` : ''}
             </div>
         </div>
     `;
@@ -542,4 +555,93 @@ function showToast(message, type = 'success') {
         toast.style.transition = 'all 0.3s ease';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+// Task Completion for Encargados
+function abrirModalCompletar(id) {
+    const tarea = allTareas[id];
+    if (!tarea) return;
+
+    const modal = document.getElementById('modal-completar-tarea');
+    if (!modal) {
+        // Create modal if it doesn't exist
+        const modalHtml = `
+            <div id="modal-completar-tarea" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-[110] p-4">
+                <div id="modal-completar-content" class="bg-white dark:bg-card-dark rounded-3xl shadow-2xl w-full max-w-md transform transition-all duration-300 scale-95 opacity-0">
+                    <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white">Completar Tarea</h3>
+                    </div>
+                    <form id="form-completar-tarea" class="p-6 space-y-4">
+                        <input type="hidden" id="completar-tarea-id">
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Comentario / Evidencia</label>
+                            <textarea id="completar-comentario" required rows="3" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary resize-none" placeholder="Describe brevemente lo realizado..."></textarea>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Foto de Evidencia (Opcional)</label>
+                            <input type="file" id="completar-foto" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20">
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" onclick="cerrarModalCompletar()" class="flex-1 py-3 rounded-xl font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">Cancelar</button>
+                            <button type="submit" class="flex-1 py-3 rounded-xl font-semibold bg-success text-white shadow-lg shadow-emerald-500/20">Finalizar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        document.getElementById('form-completar-tarea').addEventListener('submit', guardarCumplimiento);
+    }
+
+    document.getElementById('completar-tarea-id').value = id;
+    showModal('modal-completar-tarea', 'modal-completar-content');
+}
+
+function cerrarModalCompletar() {
+    const modal = document.getElementById('modal-completar-tarea');
+    const content = document.getElementById('modal-completar-content');
+    content.classList.remove('scale-100', 'opacity-100');
+    content.classList.add('scale-95', 'opacity-0');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }, 200);
+}
+
+async function guardarCumplimiento(e) {
+    e.preventDefault();
+    const id = document.getElementById('completar-tarea-id').value;
+    const comentario = document.getElementById('completar-comentario').value.trim();
+    const file = document.getElementById('completar-foto').files[0];
+    const btn = e.target.querySelector('button[type="submit"]');
+
+    try {
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+
+        let fotoUrl = null;
+        if (file) {
+            const ref = storage.ref(`evidencia_tareas/${id}/${Date.now()}_${file.name}`);
+            const snap = await ref.put(file);
+            fotoUrl = await snap.ref.getDownloadURL();
+        }
+
+        const data = {
+            estado: 'completado',
+            fechaCumplido: new Date().toISOString(),
+            completada: {
+                comentario: comentario,
+                fecha: new Date().toISOString(),
+                fotos: fotoUrl ? [fotoUrl] : []
+            }
+        };
+
+        await db.ref(`tareas/${id}`).update(data);
+        showToast('¡Tarea completada con éxito!');
+        cerrarModalCompletar();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Finalizar';
+    }
 }

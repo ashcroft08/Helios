@@ -1,6 +1,6 @@
 /**
  * Auth Module - Firebase Authentication with Role Management
- * Roles: admin, encargado (supervisor)
+ * Roles: admin, encargado (supervisor/a)
  */
 
 const auth = firebase.auth();
