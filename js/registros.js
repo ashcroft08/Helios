@@ -1,10 +1,10 @@
-// ADAPTED FOR FOLIOS STRUCTURE
+// Adaptado para estructura de folios
 
-// Initialize on DOM ready
+// Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
     cargarRegistros();
 
-    // Close dropdown when clicking outside
+    // Cerrar dropdown al hacer clic fuera
     window.addEventListener('click', (e) => {
         const container = document.getElementById('dropdown-sucursal-container');
         const menu = document.getElementById('dropdown-sucursal-menu');
@@ -27,23 +27,23 @@ function cargarRegistros() {
 }
 
 function cargarSucursales(data) {
-    // Helper function to capitalize first letter
+    // Función para capitalizar primera letra
     function capitalize(str) {
         if (!str) return str;
         return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
     }
 
-    // Load ubicaciones from dedicated collection
+    // Cargar ubicaciones desde la colección
     db.ref("ubicaciones").once("value").then(snapshot => {
         const ubicacionesData = snapshot.val();
         let listaSorted = [];
 
         if (ubicacionesData && typeof ubicacionesData === 'object') {
-            // Keys are the location names
+            // Las llaves son los nombres de ubicación
             listaSorted = Object.keys(ubicacionesData).sort();
         }
 
-        // Update Custom Filter Dropdown
+        // Actualizar dropdown de filtro
         const sucursalOptions = document.getElementById("sucursal-options");
         const hiddenInput = document.getElementById("filtro-sucursal");
         const currentFiltroVal = hiddenInput ? hiddenInput.value : "";
@@ -51,7 +51,7 @@ function cargarSucursales(data) {
         if (sucursalOptions) {
             sucursalOptions.innerHTML = "";
 
-            // Add "Todas" option
+            // Agregar opción "Todas"
             const btnTodas = document.createElement("button");
             btnTodas.type = "button";
             btnTodas.className = `w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between ${!currentFiltroVal ? 'text-primary font-semibold bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-600 dark:text-slate-300'}`;
@@ -70,7 +70,7 @@ function cargarSucursales(data) {
             });
         }
 
-        // Update Form Select (if exists)
+        // Actualizar select del formulario (si existe)
         const formSelect = document.getElementById("form-sucursal");
         if (formSelect) {
             const currentFormValue = formSelect.value;
@@ -97,7 +97,7 @@ function seleccionarSucursalFiltro(loc) {
     const menu = document.getElementById("dropdown-sucursal-menu");
 
     if (hiddenInput) hiddenInput.value = loc;
-    // Capitalize for display
+    // Capitalizar para mostrar
     const displayName = loc ? loc.charAt(0).toUpperCase() + loc.slice(1).toLowerCase() : "Todas las Sucursales";
     if (labelText) labelText.textContent = displayName;
     if (menu) menu.classList.add("hidden");
@@ -213,7 +213,7 @@ function mostrarTabla(data, desde, hasta, sucursalFiltro) {
     });
 }
 
-// Toast Notification System
+// Sistema de notificaciones toast
 function showToast(message, type = 'success') {
     const container = document.getElementById("toast-container");
     const toast = document.createElement("div");
@@ -235,7 +235,7 @@ function showToast(message, type = 'success') {
     }
 }
 
-// Modal Control
+// Control de modales
 function openModal(isEdit = false) {
     const modal = document.getElementById("modal-registro");
     const content = document.getElementById("modal-content");
@@ -265,14 +265,14 @@ function openModal(isEdit = false) {
     }
 }
 
-// View Details Modal Logic - FOLIO LEVEL VIEW
+// Ver detalle del folio
 function verDetalle(folioId) {
     db.ref(`folios/${folioId}`).once("value").then(snapshot => {
         const folio = snapshot.val();
         console.log("Datos del folio cargado para el modal:", folio);
         if (!folio || !folio.actividades) return;
 
-        // Calculate average
+        // Calcular promedio
         const actividadesKeys = Object.keys(folio.actividades);
         let sumaPuntaje = 0;
         actividadesKeys.forEach(key => {
@@ -280,7 +280,7 @@ function verDetalle(folioId) {
         });
         const promedio = actividadesKeys.length > 0 ? (sumaPuntaje / actividadesKeys.length).toFixed(1) : "0";
 
-        // Populate header
+        // Llenar header
         const elCorreo = document.getElementById("detalle-correo");
         const elSucursal = document.getElementById("detalle-sucursal");
         const elFecha = document.getElementById("detalle-fecha");
@@ -291,7 +291,7 @@ function verDetalle(folioId) {
         if (elFecha) elFecha.innerHTML = `<span class="material-icons-outlined text-xs text-primary">calendar_today</span> ${folio.fecha ? folio.fecha.substring(0, 10) : ""}`;
         if (elPromedio) elPromedio.innerHTML = `<span class="material-icons-outlined text-sm">star</span> ${promedio} <span class="text-xs text-slate-400 font-medium">/ 10</span>`;
 
-        // Generate activity cards
+        // Generar tarjetas de actividades
         const actividadesContainer = document.getElementById("detalle-actividades");
         actividadesContainer.innerHTML = "";
 
@@ -299,7 +299,7 @@ function verDetalle(folioId) {
             const act = folio.actividades[actividadNombre];
             const displayNombre = actividadNombre.charAt(0).toUpperCase() + actividadNombre.slice(1);
 
-            // Build photos HTML if they exist
+            // Construir HTML de fotos si existen
             let fotosHtml = "";
             if (act.fotos && Array.isArray(act.fotos) && act.fotos.length > 0) {
                 fotosHtml = `
@@ -334,25 +334,25 @@ function verDetalle(folioId) {
             actividadesContainer.appendChild(card);
         });
 
-        // Map Implementation
+        // Implementación del mapa
         const mapaContainer = document.getElementById("detalle-mapa-container");
         const mapaIframe = document.getElementById("detalle-mapa-iframe");
 
-        // Potential coordinate fields: folio.coordenadas (string "lat,lng"), folio.lat/lng, etc.
+        // Campos de coordenadas posibles
         let coords = folio.coordenadas || (folio.lat && folio.lng ? `${folio.lat},${folio.lng}` : null);
 
         if (coords) {
             console.log("Coordenadas encontradas:", coords);
             mapaContainer.classList.remove("hidden");
-            // Use Google Maps Embed API (Standard mode doesn't require API key for basic embed if shared)
-            // But for a better experience, we use the standard place/search URL pattern
+            // Usamos Google Maps Embed
+            // Para mejor experiencia usamos el patrón de URL estándar
             mapaIframe.src = `https://maps.google.com/maps?q=${coords}&z=15&output=embed`;
         } else {
             mapaContainer.classList.add("hidden");
             mapaIframe.src = "";
         }
 
-        // Show modal
+        // Mostrar modal
         const modal = document.getElementById("modal-detalle");
         const content = document.getElementById("modal-detalle-content");
 
@@ -434,7 +434,7 @@ function closeModal() {
     }
 }
 
-// File Preview & Upload Preview
+// Vista previa de archivos
 if (document.getElementById("form-foto-file")) {
     document.getElementById("form-foto-file").addEventListener("change", function (e) {
         const file = e.target.files[0];
@@ -454,7 +454,7 @@ if (document.getElementById("form-foto-file")) {
     });
 }
 
-// Prepare Edit
+// Preparar edición
 function prepararEdicion(uid, id) {
     db.ref(`registros/${uid}/${id}`).once("value").then(snapshot => {
         const r = snapshot.val();
@@ -488,7 +488,7 @@ function prepararEdicion(uid, id) {
     });
 }
 
-// Save Logic with Storage
+// Lógica de guardado con almacenamiento
 const formRegistro = document.getElementById("form-registro");
 if (formRegistro) {
     formRegistro.addEventListener("submit", async (e) => {
@@ -549,7 +549,7 @@ function eliminarRegistro(folioId) {
             .catch(err => showToast("Error al eliminar: " + err.message, 'error'));
     }
 }
-// Helper: Load image and convert to base64
+// Función auxiliar: Cargar imagen y convertir a base64
 function loadImageAsBase64(url) {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -564,7 +564,7 @@ function loadImageAsBase64(url) {
                 const dataURL = canvas.toDataURL("image/jpeg", 0.7);
                 resolve(dataURL);
             } catch (e) {
-                resolve(null); // CORS or other error
+                resolve(null); // Error de CORS u otro
             }
         };
         img.onerror = () => resolve(null);
@@ -572,7 +572,7 @@ function loadImageAsBase64(url) {
     });
 }
 
-// Individual Folio PDF Report with Images
+// Reporte PDF de folio individual con imágenes
 async function exportarPDFFolio(folioId) {
     showToast("Generando reporte con imágenes...");
 
@@ -588,7 +588,7 @@ async function exportarPDFFolio(folioId) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
-        // Calculate aggregates
+        // Calcular totales
         const actividadesKeys = Object.keys(folio.actividades);
         let sumaPuntaje = 0;
         actividadesKeys.forEach(key => {
@@ -596,7 +596,7 @@ async function exportarPDFFolio(folioId) {
         });
         const promedio = actividadesKeys.length > 0 ? (sumaPuntaje / actividadesKeys.length).toFixed(1) : "0";
 
-        // 1. Header
+        // 1. Encabezado
         doc.setFillColor(30, 41, 59);
         doc.rect(0, 0, 210, 45, 'F');
 
@@ -613,7 +613,7 @@ async function exportarPDFFolio(folioId) {
         const fechaGen = new Date().toLocaleString();
         doc.text(`Generado: ${fechaGen}`, 140, 38);
 
-        // 2. Folio Info Section
+        // 2. Sección de info del folio
         doc.setFillColor(248, 250, 252);
         doc.roundedRect(15, 50, 180, 35, 3, 3, 'F');
 
@@ -643,7 +643,7 @@ async function exportarPDFFolio(folioId) {
         doc.setTextColor(245, 158, 11);
         doc.text(promedio + " / 10", 100, 83);
 
-        // Coordinates Implementation in PDF
+        // Implementación de coordenadas en PDF
         const coords = folio.coordenadas || (folio.lat && folio.lng ? `${folio.lat},${folio.lng}` : null);
         if (coords) {
             doc.setTextColor(100);
@@ -656,11 +656,11 @@ async function exportarPDFFolio(folioId) {
             doc.setFont("helvetica", "bold");
             doc.text(coords, 145, 83);
 
-            // Add clickable link
+            // Agregar enlace clickeable
             doc.link(145, 79, 40, 6, { url: `https://www.google.com/maps/search/?api=1&query=${coords}` });
         }
 
-        // 3. Activities Section with Images
+        // 3. Sección de actividades con imágenes
         let currentY = 95;
         const pageHeight = doc.internal.pageSize.height || 297;
         const marginBottom = 30;
@@ -669,14 +669,14 @@ async function exportarPDFFolio(folioId) {
             const act = folio.actividades[key];
             const nombre = key.charAt(0).toUpperCase() + key.slice(1);
 
-            // Check if we need a new page
-            const neededHeight = 100; // Estimated height for activity with larger images
+            // Verificar si necesitamos nueva página
+            const neededHeight = 100; // Altura estimada para actividad con imágenes grandes
             if (currentY + neededHeight > pageHeight - marginBottom) {
                 doc.addPage();
                 currentY = 20;
             }
 
-            // Activity Header
+            // Encabezado de actividad
             doc.setFillColor(59, 130, 246);
             doc.roundedRect(20, currentY, 170, 8, 2, 2, 'F');
             doc.setTextColor(255);
@@ -690,7 +690,7 @@ async function exportarPDFFolio(folioId) {
 
             currentY += 12;
 
-            // Comment
+            // Comentario
             doc.setTextColor(80);
             doc.setFontSize(9);
             doc.setFont("helvetica", "italic");
@@ -699,7 +699,7 @@ async function exportarPDFFolio(folioId) {
             doc.text(comentarioLines, 25, currentY);
             currentY += comentarioLines.length * 5 + 5;
 
-            // Photos
+            // Fotos
             if (act.fotos && Array.isArray(act.fotos) && act.fotos.length > 0) {
                 doc.setTextColor(100);
                 doc.setFontSize(8);
@@ -711,13 +711,13 @@ async function exportarPDFFolio(folioId) {
                 const imgWidth = 100;
                 const imgHeight = 80;
 
-                for (const fotoUrl of act.fotos.slice(0, 3)) { // Max 3 photos per activity
+                for (const fotoUrl of act.fotos.slice(0, 3)) { // Máximo 3 fotos por actividad
                     if (xPos + imgWidth > 180) {
                         xPos = 25;
                         currentY += imgHeight + 5;
                     }
 
-                    // Check for page break before image
+                    // Verificar salto de página antes de imagen
                     if (currentY + imgHeight > pageHeight - marginBottom) {
                         doc.addPage();
                         currentY = 20;
@@ -739,13 +739,13 @@ async function exportarPDFFolio(folioId) {
                 currentY += 5;
             }
 
-            // Separator line
+            // Línea separadora
             doc.setDrawColor(226, 232, 240);
             doc.line(20, currentY, 190, currentY);
             currentY += 10;
         }
 
-        // 4. Signature Section
+        // 4. Sección de firmas
         if (currentY + 40 > pageHeight - marginBottom) {
             doc.addPage();
             currentY = 20;
@@ -762,7 +762,7 @@ async function exportarPDFFolio(folioId) {
         doc.text("Firma de Supervisión", 35, currentY + 26);
         doc.text("Sello de Sucursal / Gerencia", 135, currentY + 26);
 
-        // 5. Footer on all pages
+        // 5. Pie de página en todas las hojas
         const totalPages = doc.internal.getNumberOfPages();
         for (let i = 1; i <= totalPages; i++) {
             doc.setPage(i);
@@ -772,7 +772,7 @@ async function exportarPDFFolio(folioId) {
             doc.text(`Página ${i} de ${totalPages}`, 170, pageHeight - 10);
         }
 
-        // Save
+        // Guardar
         const filename = `Folio_${folio.sucursal || 'General'}_${folio.fecha ? folio.fecha.substring(0, 10) : 'sin_fecha'}.pdf`;
         doc.save(filename);
         showToast("Reporte con imágenes generado correctamente");
@@ -787,7 +787,7 @@ function exportarPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // 1. MANUAL Data Extraction with Cleaning
+    // 1. Extracción manual de datos con limpieza
     const table = document.getElementById("tabla-registros");
     const rows = Array.from(table.querySelectorAll("tbody tr"));
 
@@ -797,24 +797,24 @@ function exportarPDF() {
 
     rows.forEach(tr => {
         if (tr.cells.length >= 5) {
-            // Extract and CLEAN each cell
+            // Extraer y limpiar cada celda
             let usuario = tr.cells[0].innerText.trim();
             let sucursal = tr.cells[1].innerText.trim();
             let fecha = tr.cells[2].innerText.trim();
             let actividades = tr.cells[3].innerText.trim();
             let promedio = tr.cells[4].innerText.trim();
 
-            // --- CLEANING LOGIC ---
-            // Remove initials (e.g., "FI ", "US ", "DA ")
+            // --- LÓGICA DE LIMPIEZA ---
+            // Remover iniciales (ej: "FI ", "US ", "DA ")
             usuario = usuario.replace(/^[A-Z]{2,3}\s+/i, '').trim();
 
-            // Remove "location_on" icon text
+            // Remover texto del icono "location_on"
             sucursal = sucursal.replace(/location_on/gi, '').trim();
 
-            // Add to clean array
+            // Agregar al array limpio
             cleanData.push([usuario, sucursal, fecha, actividades, promedio]);
 
-            // Calculate metrics
+            // Calcular métricas
             const val = parseFloat(promedio);
             if (!isNaN(val)) {
                 totalPuntos += val;
@@ -825,7 +825,7 @@ function exportarPDF() {
 
     const promedio = count > 0 ? (totalPuntos / count).toFixed(1) : "0";
 
-    // 2. Header Decoration
+    // 2. Decoración del encabezado
     doc.setFillColor(30, 41, 59);
     doc.rect(0, 0, 210, 40, 'F');
 
@@ -842,7 +842,7 @@ function exportarPDF() {
     const fechaGen = new Date().toLocaleString();
     doc.text(`Generado: ${fechaGen}`, 140, 32);
 
-    // 3. Executive Summary
+    // 3. Resumen ejecutivo
     doc.setTextColor(30, 41, 59);
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
@@ -862,7 +862,7 @@ function exportarPDF() {
     doc.text(`Periodo: ${desde} - ${hasta}`, 20, 65);
     doc.text(`Sucursal: ${sucursalFiltro}`, 20, 71);
 
-    // Metric Cards
+    // Tarjetas de métricas
     doc.setFillColor(248, 250, 252);
     doc.roundedRect(145, 50, 45, 25, 3, 3, 'F');
     doc.roundedRect(95, 50, 45, 25, 3, 3, 'F');
@@ -885,7 +885,7 @@ function exportarPDF() {
     doc.text("TOTAL", 100, 68);
     doc.text("FOLIOS", 100, 71);
 
-    // 4. Data Table using CLEAN body array
+    // 4. Tabla de datos usando el array limpio
     doc.autoTable({
         startY: 85,
         theme: 'grid',
@@ -917,7 +917,7 @@ function exportarPDF() {
         }
     });
 
-    // 5. Signature Section
+    // 5. Sección de firmas
     const finalY = doc.lastAutoTable.finalY + 35;
     if (finalY < (doc.internal.pageSize.height - 40)) {
         doc.setDrawColor(200);
@@ -936,7 +936,7 @@ function exportarPDF() {
 document.addEventListener('DOMContentLoaded', () => {
     cargarRegistros();
 
-    // Flatpickr Initialization
+    // Inicialización de Flatpickr
     const flatpickrConfig = {
         locale: "es",
         dateFormat: "Y-m-d",
@@ -950,7 +950,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById("hasta")) flatpickr("#hasta", flatpickrConfig);
     if (document.getElementById("form-fecha")) flatpickr("#form-fecha", flatpickrConfig);
 
-    // Close dropdown when clicking outside
+    // Cerrar dropdown al hacer clic fuera
     window.addEventListener('click', (e) => {
         const container = document.getElementById('dropdown-sucursal-container');
         const menu = document.getElementById('dropdown-sucursal-menu');

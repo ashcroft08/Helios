@@ -1,6 +1,6 @@
 /**
- * Actividades Management System
- * Handles CRUD operations with soft delete (active/inactive)
+ * Sistema de Gestión de Actividades
+ * Maneja operaciones CRUD con borrado suave (activo/inactivo)
  */
 
 let allActividades = {};
@@ -9,10 +9,10 @@ let filtroActual = 'todas';
 document.addEventListener('DOMContentLoaded', () => {
     cargarActividades();
 
-    // Form submission
+    // Envío de formulario
     document.getElementById('form-actividad').addEventListener('submit', guardarActividad);
 
-    // Global click listener to close dropdowns
+    // Listener global para cerrar dropdowns
     window.addEventListener('click', (e) => {
         const menu = document.getElementById('dropdown-estado-menu');
         const btn = document.getElementById('btn-estado-filtro');
@@ -22,19 +22,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Helper function to capitalize first letter
+// Función para capitalizar primera letra
 function capitalize(str) {
     if (!str) return str;
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
 
-// Dropdown Toggle
+// Alternar dropdown
 function toggleDropdown(id) {
     const menu = document.getElementById(id);
     if (menu) menu.classList.toggle('hidden');
 }
 
-// Filter selection
+// Selección de filtro
 function seleccionarFiltro(valor) {
     filtroActual = valor;
     document.getElementById('selected-estado-text').textContent = capitalize(valor);
@@ -42,7 +42,7 @@ function seleccionarFiltro(valor) {
     filtrarActividades();
 }
 
-// Load all activities
+// Cargar todas las actividades
 function cargarActividades() {
     db.ref("actividades").on("value", snapshot => {
         allActividades = snapshot.val() || {};
@@ -50,25 +50,25 @@ function cargarActividades() {
     });
 }
 
-// Filter and display activities
+// Filtrar y mostrar actividades
 function filtrarActividades() {
     const busqueda = document.getElementById('buscar-actividad').value.toLowerCase();
     const container = document.getElementById('actividades-container');
     const emptyState = document.getElementById('empty-state');
     container.innerHTML = '';
 
-    // Convert object to array for easier manipulation
+    // Convertir objeto a array para fácil manipulación
     const actividadesArray = Object.entries(allActividades).map(([nombre, activo]) => ({
         nombre,
         activo: activo === true
     }));
 
-    // Sort alphabetically
+    // Ordenar alfabéticamente
     actividadesArray.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
     let count = 0;
     actividadesArray.forEach(actividad => {
-        // Apply filters
+        // Aplicar filtros
         if (filtroActual === 'activas' && !actividad.activo) return;
         if (filtroActual === 'inactivas' && actividad.activo) return;
         if (busqueda && !actividad.nombre.toLowerCase().includes(busqueda)) return;
@@ -80,7 +80,7 @@ function filtrarActividades() {
     emptyState.classList.toggle('hidden', count > 0);
 }
 
-// Create activity card
+// Crear tarjeta de actividad
 function crearTarjetaActividad(actividad) {
     const card = document.createElement('div');
     card.className = 'bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-shadow';
@@ -146,7 +146,7 @@ function crearTarjetaActividad(actividad) {
     return card;
 }
 
-// Toggle activity status (soft delete)
+// Cambiar estado de actividad (borrado suave)
 function toggleEstado(nombre, nuevoEstado) {
     db.ref(`actividades/${nombre}`).set(nuevoEstado)
         .then(() => {
@@ -155,7 +155,7 @@ function toggleEstado(nombre, nuevoEstado) {
         .catch(err => showToast('Error: ' + err.message, 'error'));
 }
 
-// Open modal for new activity
+// Abrir modal para nueva actividad
 function openModalActividad() {
     document.getElementById('actividad-id').value = '';
     document.getElementById('actividad-original-name').value = '';
@@ -166,7 +166,7 @@ function openModalActividad() {
     showModal('modal-actividad', 'modal-actividad-content');
 }
 
-// Edit existing activity
+// Editar actividad existente
 function editarActividad(nombre) {
     document.getElementById('actividad-id').value = nombre;
     document.getElementById('actividad-original-name').value = nombre;
@@ -177,7 +177,7 @@ function editarActividad(nombre) {
     showModal('modal-actividad', 'modal-actividad-content');
 }
 
-// Save activity (create or update)
+// Guardar actividad (crear o actualizar)
 function guardarActividad(e) {
     e.preventDefault();
 
@@ -189,14 +189,14 @@ function guardarActividad(e) {
         return;
     }
 
-    // Check for duplicates (only if creating new or changing name)
+    // Verificar duplicados (solo si crea nueva o cambia nombre)
     if ((!originalName || originalName !== nuevoNombre) && allActividades.hasOwnProperty(nuevoNombre)) {
         showToast('Ya existe una actividad con ese nombre', 'error');
         return;
     }
 
     if (originalName && originalName !== nuevoNombre) {
-        // Renaming: delete old and create new with same status
+        // Renombrando: eliminar vieja y crear nueva con mismo estado
         const estadoAnterior = allActividades[originalName];
         db.ref(`actividades/${originalName}`).remove()
             .then(() => db.ref(`actividades/${nuevoNombre}`).set(estadoAnterior))
@@ -206,11 +206,11 @@ function guardarActividad(e) {
             })
             .catch(err => showToast('Error: ' + err.message, 'error'));
     } else if (originalName) {
-        // Just editing (name didn't change) - nothing to update since only field is name
+        // Solo editando (nombre no cambió) - nada que actualizar ya que el único campo es nombre
         showToast('Actividad sin cambios');
         closeModalActividad();
     } else {
-        // Creating new
+        // Creando nueva
         db.ref(`actividades/${nuevoNombre}`).set(true)
             .then(() => {
                 showToast('Actividad creada correctamente');
@@ -220,14 +220,14 @@ function guardarActividad(e) {
     }
 }
 
-// Prepare delete confirmation
+// Preparar confirmación de eliminación
 function prepararEliminar(nombre) {
     document.getElementById('actividad-a-eliminar').value = nombre;
     document.getElementById('nombre-eliminar').textContent = capitalize(nombre);
     showModal('modal-confirmar', 'modal-confirmar-content');
 }
 
-// Confirm permanent delete
+// Confirmar eliminación permanente
 function confirmarEliminar() {
     const nombre = document.getElementById('actividad-a-eliminar').value;
 
@@ -239,7 +239,7 @@ function confirmarEliminar() {
         .catch(err => showToast('Error: ' + err.message, 'error'));
 }
 
-// Modal helpers
+// Funciones auxiliares de modales
 function showModal(modalId, contentId) {
     const modal = document.getElementById(modalId);
     const content = document.getElementById(contentId);
@@ -273,7 +273,7 @@ function closeModalConfirmar() {
     }, 200);
 }
 
-// Toast notification
+// Notificación toast
 function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');

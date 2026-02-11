@@ -1,6 +1,6 @@
 /**
- * Asistencia (Clock In/Out) Reports System
- * Handles display and filtering of attendance records
+ * Sistema de Reportes de Asistencia (Entradas/Salidas)
+ * Maneja la visualización y filtrado de registros de asistencia
  */
 
 let allMarcaciones = [];
@@ -9,7 +9,7 @@ let filtroTipo = 'todos';
 let filtroUsuario = '';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Set default date filters (last 30 days)
+    // Establecer filtros de fecha por defecto (últimos 30 días)
     const hoy = new Date();
     const hace30Dias = new Date();
     hace30Dias.setDate(hace30Dias.getDate() - 30);
@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     cargarMarcaciones();
 
-    // Global click listener to close dropdowns
+    // Listener global para cerrar dropdowns
     window.addEventListener('click', (e) => {
         ['dropdown-tipo-menu', 'dropdown-usuario-menu'].forEach(id => {
             const menu = document.getElementById(id);
@@ -33,31 +33,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Format date for input field
+// Formatear fecha para campo input
 function formatDateForInput(date) {
     return date.toISOString().substring(0, 10);
 }
 
-// Format date for display
+// Formatear fecha para mostrar
 function formatDateDisplay(dateStr) {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
     return date.toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-// Format time for display
+// Formatear hora para mostrar
 function formatTimeDisplay(dateStr) {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
     return date.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-// Load all attendance records
+// Cargar todos los registros de asistencia
 function cargarMarcaciones() {
     db.ref("marcas").on("value", snapshot => {
         const data = snapshot.val() || {};
 
-        // Convert to array and sort by date descending
+        // Convertir a array y ordenar por fecha descendente
         allMarcaciones = Object.entries(data).map(([id, marca]) => ({
             id,
             ...marca
@@ -68,7 +68,7 @@ function cargarMarcaciones() {
     });
 }
 
-// Populate users dropdown
+// Poblar dropdown de usuarios
 function poblarUsuarios() {
     const container = document.getElementById('usuario-options');
     const usuariosUnicos = [...new Set(allMarcaciones.map(m => m.usuario))].sort();
@@ -90,9 +90,9 @@ function poblarUsuarios() {
     });
 }
 
-// Toggle dropdown
+// Alternar dropdown
 function toggleDropdown(id) {
-    // Close other dropdowns first
+    // Cerrar otros dropdowns primero
     ['dropdown-tipo-menu', 'dropdown-usuario-menu'].forEach(menuId => {
         if (menuId !== id) {
             document.getElementById(menuId)?.classList.add('hidden');
@@ -103,7 +103,7 @@ function toggleDropdown(id) {
     if (menu) menu.classList.toggle('hidden');
 }
 
-// Select type filter
+// Seleccionar filtro de tipo
 function seleccionarTipo(valor, texto) {
     filtroTipo = valor;
     document.getElementById('selected-tipo-text').textContent = texto;
@@ -111,7 +111,7 @@ function seleccionarTipo(valor, texto) {
     document.getElementById('dropdown-tipo-menu').classList.add('hidden');
 }
 
-// Select user filter
+// Seleccionar filtro de usuario
 function seleccionarUsuario(valor, texto) {
     filtroUsuario = valor;
     document.getElementById('selected-usuario-text').textContent = texto;
@@ -119,7 +119,7 @@ function seleccionarUsuario(valor, texto) {
     document.getElementById('dropdown-usuario-menu').classList.add('hidden');
 }
 
-// Apply filters and update table
+// Aplicar filtros y actualizar tabla
 function aplicarFiltros() {
     const desde = document.getElementById('filtro-desde').value;
     const hasta = document.getElementById('filtro-hasta').value;
@@ -129,21 +129,21 @@ function aplicarFiltros() {
     let salidasHoy = 0;
     let usuariosUnicos = new Set();
 
-    // Filter data
+    // Filtrar datos
     const filteredData = allMarcaciones.filter(marca => {
         const fechaMarca = marca.fecha.substring(0, 10);
 
-        // Date range filter
+        // Filtro de rango de fechas
         if (desde && fechaMarca < desde) return false;
         if (hasta && fechaMarca > hasta) return false;
 
-        // Type filter
+        // Filtro de tipo
         if (filtroTipo !== 'todos' && marca.tipo !== filtroTipo) return false;
 
-        // User filter
+        // Filtro de usuario
         if (filtroUsuario && marca.usuario !== filtroUsuario) return false;
 
-        // Count stats for today (within filtered view)
+        // Contar estadísticas de hoy (dentro de la vista filtrada)
         if (fechaMarca === hoy) {
             if (marca.tipo === 'entrada') entradasHoy++;
             if (marca.tipo === 'salida') salidasHoy++;
@@ -153,19 +153,19 @@ function aplicarFiltros() {
         return true;
     });
 
-    // Update stats
+    // Actualizar estadísticas
     document.getElementById('stat-total').textContent = filteredData.length.toLocaleString();
     document.getElementById('stat-entradas-hoy').textContent = entradasHoy;
     document.getElementById('stat-salidas-hoy').textContent = salidasHoy;
     document.getElementById('stat-usuarios').textContent = usuariosUnicos.size;
 
-    // Update table
+    // Actualizar tabla
     mostrarTabla(filteredData);
 }
 
-// Display table with DataTables
+// Mostrar tabla con DataTables
 function mostrarTabla(data) {
-    // Destroy existing DataTable if exists
+    // Destruir DataTable existente si existe
     if (dataTable) {
         dataTable.destroy();
         dataTable = null;
@@ -244,7 +244,7 @@ function mostrarTabla(data) {
         tbody.appendChild(row);
     });
 
-    // Initialize DataTable
+    // Inicializar DataTable
     dataTable = $('#tabla-marcaciones').DataTable({
         language: {
             url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json'
@@ -256,7 +256,7 @@ function mostrarTabla(data) {
     });
 }
 
-// View photo modal
+// Modal para ver foto
 function verFoto(url) {
     document.getElementById('foto-ampliada').src = url;
     const modal = document.getElementById('modal-foto');
@@ -270,7 +270,7 @@ function closeModalFoto() {
     modal.classList.remove('flex');
 }
 
-// View map modal
+// Modal para ver mapa
 function verMapa(lat, lng) {
     const iframe = document.getElementById('mapa-iframe');
     iframe.src = `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${lat},${lng}&zoom=17`;
@@ -287,7 +287,7 @@ function closeModalMapa() {
     document.getElementById('mapa-iframe').src = '';
 }
 
-// Toast notification
+// Notificación toast
 function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
