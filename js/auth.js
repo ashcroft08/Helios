@@ -133,14 +133,26 @@ async function getUserData(uid) {
 }
 
 /**
- * Get current user's role
- * Returns: 'admin' | 'encargado' | null
+ * Send password reset email
  */
-async function getCurrentUserRole() {
-    const user = auth.currentUser;
-    if (!user) return null;
-    const data = await getUserData(user.uid);
-    return data ? data.rol : null;
+async function resetPassword(email) {
+    try {
+        await auth.sendPasswordResetEmail(email);
+        return { success: true, message: 'Correo de restablecimiento enviado. Revisa tu bandeja de entrada.' };
+    } catch (error) {
+        let message = 'Error al enviar el correo';
+        switch (error.code) {
+            case 'auth/invalid-email':
+                message = 'Correo electrónico inválido';
+                break;
+            case 'auth/user-not-found':
+                message = 'No existe una cuenta con ese correo';
+                break;
+            default:
+                message = error.message || message;
+        }
+        return { success: false, message };
+    }
 }
 
 /**
