@@ -573,16 +573,27 @@ function abrirModalCompletar(id) {
                     <form id="form-completar-tarea" class="p-6 space-y-4">
                         <input type="hidden" id="completar-tarea-id">
                         <div>
-                            <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Comentario / Evidencia</label>
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Comentario / Evidencia *</label>
                             <textarea id="completar-comentario" required rows="3" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary resize-none" placeholder="Describe brevemente lo realizado..."></textarea>
                         </div>
                         <div>
                             <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Foto de Evidencia (Opcional)</label>
-                            <input type="file" id="completar-foto" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20">
+                            <div class="space-y-3">
+                                <input type="file" id="completar-foto" accept="image/*" onchange="handlePreview(this)" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20">
+                                <div id="foto-preview-container" class="hidden relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video bg-slate-50 dark:bg-slate-900">
+                                    <img id="img-preview" class="w-full h-full object-cover">
+                                    <button type="button" onclick="removePhoto()" class="absolute top-2 right-2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors">
+                                        <span class="material-icons-outlined text-sm">close</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div class="flex gap-3 pt-2">
-                            <button type="button" onclick="cerrarModalCompletar()" class="flex-1 py-3 rounded-xl font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">Cancelar</button>
-                            <button type="submit" class="flex-1 py-3 rounded-xl font-semibold bg-success text-white shadow-lg shadow-emerald-500/20">Finalizar</button>
+                            <button type="button" onclick="cerrarModalCompletar()" class="flex-1 py-3 rounded-xl font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 transitioning">Cancelar</button>
+                            <button type="submit" id="btn-finalizar-tarea" class="flex-1 py-3 rounded-xl font-semibold bg-success text-white shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transitioning">
+                                <span class="material-icons-outlined text-lg">check_circle</span>
+                                <span>Finalizar</span>
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -599,12 +610,72 @@ function abrirModalCompletar(id) {
 function cerrarModalCompletar() {
     const modal = document.getElementById('modal-completar-tarea');
     const content = document.getElementById('modal-completar-content');
+    if (!modal || !content) return;
+
     content.classList.remove('scale-100', 'opacity-100');
     content.classList.add('scale-95', 'opacity-0');
     setTimeout(() => {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
+
+        // Clear form
+        document.getElementById('form-completar-tarea').reset();
+        document.getElementById('foto-preview-container').classList.add('hidden');
     }, 200);
+}
+
+// Preview handles
+function handlePreview(input) {
+    const container = document.getElementById('foto-preview-container');
+    const img = document.getElementById('img-preview');
+    const file = input.files[0];
+
+    if (file) {
+        img.src = URL.createObjectURL(file);
+        container.classList.remove('hidden');
+    } else {
+        container.classList.add('hidden');
+    }
+}
+
+function removePhoto() {
+    const input = document.getElementById('completar-foto');
+    const container = document.getElementById('foto-preview-container');
+    input.value = '';
+    container.classList.add('hidden');
+}
+
+/**
+ * Image compression utility using Canvas
+ */
+async function compressImage(file, maxWidth = 1200, quality = 0.7) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = (maxWidth / width) * height;
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    resolve(blob);
+                }, 'image/jpeg', quality);
+            };
+        };
+    });
 }
 
 async function guardarCumplimiento(e) {
@@ -612,16 +683,21 @@ async function guardarCumplimiento(e) {
     const id = document.getElementById('completar-tarea-id').value;
     const comentario = document.getElementById('completar-comentario').value.trim();
     const file = document.getElementById('completar-foto').files[0];
-    const btn = e.target.querySelector('button[type="submit"]');
+    const btn = document.getElementById('btn-finalizar-tarea');
+    const originalContent = btn.innerHTML;
+
+    if (!id || !comentario) return;
 
     try {
         btn.disabled = true;
-        btn.textContent = 'Guardando...';
+        btn.innerHTML = `<div class="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> <span>Subiendo evidencia...</span>`;
 
         let fotoUrl = null;
         if (file) {
-            const ref = storage.ref(`evidencia_tareas/${id}/${Date.now()}_${file.name}`);
-            const snap = await ref.put(file);
+            // Compress image to speed up upload
+            const compressedBlob = await compressImage(file);
+            const ref = storage.ref(`evidencia_tareas/${id}/${Date.now()}.jpg`);
+            const snap = await ref.put(compressedBlob, { contentType: 'image/jpeg' });
             fotoUrl = await snap.ref.getDownloadURL();
         }
 
@@ -639,9 +715,10 @@ async function guardarCumplimiento(e) {
         showToast('¡Tarea completada con éxito!');
         cerrarModalCompletar();
     } catch (err) {
-        showToast('Error: ' + err.message, 'error');
+        console.error("Task completion error:", err);
+        showToast('Error al guardar: ' + err.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Finalizar';
+        btn.innerHTML = originalContent;
     }
 }

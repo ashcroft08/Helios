@@ -74,7 +74,7 @@ function injectSidebar() {
                     <span class="font-medium nav-text">Tareas</span>
                     <span class="nav-tooltip">Tareas</span>
                 </a>
-                <a href="actividades.html" class="nav-link group flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activePage === 'actividades.html' ? 'bg-primary text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}">
+                <a href="actividades.html" class="nav-link nav-admin-only group flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activePage === 'actividades.html' ? 'bg-primary text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}" style="display:none">
                     <span class="material-icons-outlined">category</span>
                     <span class="font-medium nav-text">Actividades</span>
                     <span class="nav-tooltip">Actividades</span>

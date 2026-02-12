@@ -30,6 +30,7 @@
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 
     <script>
@@ -72,160 +73,239 @@
                 </div>
             </header>
 
-            <!-- Stats Cards -->
-            <div class="px-6 lg:px-10 grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <!-- Total Marcaciones -->
-                <div
-                    class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Marcaciones</p>
-                        <h3 class="text-2xl font-bold mt-1 dark:text-white" id="stat-total">0</h3>
+            <!-- View Containers -->
+            <div id="admin-view" class="hidden">
+                <!-- Stats Cards -->
+                <div class="px-6 lg:px-10 grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <!-- Total Marcaciones -->
+                    <div
+                        class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Marcaciones</p>
+                            <h3 class="text-2xl font-bold mt-1 dark:text-white" id="stat-total">0</h3>
+                        </div>
+                        <div class="p-3 bg-primary/10 rounded-xl">
+                            <span class="material-icons-outlined text-primary text-2xl">fingerprint</span>
+                        </div>
                     </div>
-                    <div class="p-3 bg-primary/10 rounded-xl">
-                        <span class="material-icons-outlined text-primary text-2xl">fingerprint</span>
+
+                    <!-- Entradas Hoy -->
+                    <div
+                        class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Entradas Hoy</p>
+                            <h3 class="text-2xl font-bold mt-1 text-success" id="stat-entradas-hoy">0</h3>
+                        </div>
+                        <div class="p-3 bg-success/10 rounded-xl">
+                            <span class="material-icons-outlined text-success text-2xl">login</span>
+                        </div>
+                    </div>
+
+                    <!-- Salidas Hoy -->
+                    <div
+                        class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Salidas Hoy</p>
+                            <h3 class="text-2xl font-bold mt-1 text-warning" id="stat-salidas-hoy">0</h3>
+                        </div>
+                        <div class="p-3 bg-warning/10 rounded-xl">
+                            <span class="material-icons-outlined text-warning text-2xl">logout</span>
+                        </div>
+                    </div>
+
+                    <!-- Usuarios Únicos -->
+                    <div
+                        class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Usuarios Únicos</p>
+                            <h3 class="text-2xl font-bold mt-1 text-info" id="stat-usuarios">0</h3>
+                        </div>
+                        <div class="p-3 bg-info/10 rounded-xl">
+                            <span class="material-icons-outlined text-info text-2xl">groups</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Entradas Hoy -->
-                <div
-                    class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Entradas Hoy</p>
-                        <h3 class="text-2xl font-bold mt-1 text-success" id="stat-entradas-hoy">0</h3>
-                    </div>
-                    <div class="p-3 bg-success/10 rounded-xl">
-                        <span class="material-icons-outlined text-success text-2xl">login</span>
+                <!-- Filters -->
+                <div class="px-6 lg:px-10 mb-6">
+                    <div
+                        class="bg-white dark:bg-card-dark p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap gap-4 items-end">
+                        <!-- Fecha Desde -->
+                        <div class="flex-1 min-w-[150px]">
+                            <label
+                                class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Desde</label>
+                            <input type="date" id="filtro-desde"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:border-primary">
+                        </div>
+
+                        <!-- Fecha Hasta -->
+                        <div class="flex-1 min-w-[150px]">
+                            <label
+                                class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Hasta</label>
+                            <input type="date" id="filtro-hasta"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:border-primary">
+                        </div>
+
+                        <!-- Tipo Filter -->
+                        <div class="flex-1 min-w-[160px] relative">
+                            <label
+                                class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Tipo</label>
+                            <button type="button" onclick="toggleDropdown('dropdown-tipo-menu')" id="btn-tipo-filtro"
+                                class="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                                <span id="selected-tipo-text">Todos</span>
+                                <span class="material-icons-outlined text-slate-400">expand_more</span>
+                            </button>
+                            <div id="dropdown-tipo-menu"
+                                class="hidden absolute left-0 mt-2 w-full origin-top-left rounded-xl bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                                <div class="py-1">
+                                    <button type="button" onclick="seleccionarTipo('todos', 'Todos')"
+                                        class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Todos</button>
+                                    <button type="button" onclick="seleccionarTipo('entrada', 'Entradas')"
+                                        class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                                        <span class="material-icons-outlined text-success text-sm">login</span> Entradas
+                                    </button>
+                                    <button type="button" onclick="seleccionarTipo('salida', 'Salidas')"
+                                        class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                                        <span class="material-icons-outlined text-warning text-sm">logout</span> Salidas
+                                    </button>
+                                </div>
+                            </div>
+                            <input type="hidden" id="filtro-tipo" value="todos">
+                        </div>
+
+                        <!-- Usuario Filter -->
+                        <div class="flex-1 min-w-[200px] relative">
+                            <label
+                                class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Usuario</label>
+                            <button type="button" onclick="toggleDropdown('dropdown-usuario-menu')"
+                                id="btn-usuario-filtro"
+                                class="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                                <span id="selected-usuario-text">Todos los usuarios</span>
+                                <span class="material-icons-outlined text-slate-400">expand_more</span>
+                            </button>
+                            <div id="dropdown-usuario-menu"
+                                class="hidden absolute left-0 mt-2 w-full origin-top-left rounded-xl bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden max-h-60 overflow-y-auto">
+                                <div class="py-1" id="usuario-options">
+                                    <!-- Options injected here -->
+                                </div>
+                            </div>
+                            <input type="hidden" id="filtro-usuario" value="">
+                        </div>
+
+                        <!-- Botón Filtrar -->
+                        <button onclick="aplicarFiltros()"
+                            class="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2">
+                            <span class="material-icons-outlined text-sm">filter_alt</span> Filtrar
+                        </button>
                     </div>
                 </div>
 
-                <!-- Salidas Hoy -->
-                <div
-                    class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Salidas Hoy</p>
-                        <h3 class="text-2xl font-bold mt-1 text-warning" id="stat-salidas-hoy">0</h3>
-                    </div>
-                    <div class="p-3 bg-warning/10 rounded-xl">
-                        <span class="material-icons-outlined text-warning text-2xl">logout</span>
-                    </div>
-                </div>
-
-                <!-- Usuarios Únicos -->
-                <div
-                    class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Usuarios Únicos</p>
-                        <h3 class="text-2xl font-bold mt-1 text-info" id="stat-usuarios">0</h3>
-                    </div>
-                    <div class="p-3 bg-info/10 rounded-xl">
-                        <span class="material-icons-outlined text-info text-2xl">groups</span>
+                <!-- Table -->
+                <div class="px-6 lg:px-10 pb-10">
+                    <div
+                        class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left" id="tabla-marcaciones">
+                                <thead class="bg-slate-50 dark:bg-slate-900/50">
+                                    <tr>
+                                        <th
+                                            class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                            Usuario</th>
+                                        <th
+                                            class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
+                                            Tipo</th>
+                                        <th
+                                            class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
+                                            Fecha</th>
+                                        <th
+                                            class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
+                                            Hora</th>
+                                        <th
+                                            class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
+                                            Ubicación</th>
+                                        <th
+                                            class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
+                                            Foto</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                                    <!-- Data injected here -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Filters -->
-            <div class="px-6 lg:px-10 mb-6">
+            <!-- Supervisor View -->
+            <div id="supervisor-view" class="hidden px-6 lg:px-10 pb-10 max-w-lg mx-auto">
                 <div
-                    class="bg-white dark:bg-card-dark p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap gap-4 items-end">
-                    <!-- Fecha Desde -->
-                    <div class="flex-1 min-w-[150px]">
-                        <label
-                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Desde</label>
-                        <input type="date" id="filtro-desde"
-                            class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:border-primary">
+                    class="bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div class="p-8 text-center border-b border-slate-100 dark:border-slate-700">
+                        <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span class="material-icons-outlined text-primary text-4xl">photo_camera</span>
+                        </div>
+                        <h3 class="text-xl font-bold dark:text-white">Marcar Asistencia</h3>
+                        <p class="text-sm text-slate-500 mt-2">Toma una foto para registrar tu jornada laboral.</p>
                     </div>
 
-                    <!-- Fecha Hasta -->
-                    <div class="flex-1 min-w-[150px]">
-                        <label
-                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Hasta</label>
-                        <input type="date" id="filtro-hasta"
-                            class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:border-primary">
-                    </div>
+                    <div class="p-8 space-y-6">
+                        <!-- Selector de Tipo -->
+                        <div class="flex p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl">
+                            <button onclick="changeAttendanceType('entrada')" id="type-entrada"
+                                class="flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 bg-white dark:bg-slate-800 shadow-sm text-success">
+                                <span class="material-icons-outlined text-lg">login</span> Entrada
+                            </button>
+                            <button onclick="changeAttendanceType('salida')" id="type-salida"
+                                class="flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 text-slate-400">
+                                <span class="material-icons-outlined text-lg">logout</span> Salida
+                            </button>
+                        </div>
 
-                    <!-- Tipo Filter -->
-                    <div class="flex-1 min-w-[160px] relative">
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Tipo</label>
-                        <button type="button" onclick="toggleDropdown('dropdown-tipo-menu')" id="btn-tipo-filtro"
-                            class="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-                            <span id="selected-tipo-text">Todos</span>
-                            <span class="material-icons-outlined text-slate-400">expand_more</span>
-                        </button>
-                        <div id="dropdown-tipo-menu"
-                            class="hidden absolute left-0 mt-2 w-full origin-top-left rounded-xl bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
-                            <div class="py-1">
-                                <button type="button" onclick="seleccionarTipo('todos', 'Todos')"
-                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Todos</button>
-                                <button type="button" onclick="seleccionarTipo('entrada', 'Entradas')"
-                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-2">
-                                    <span class="material-icons-outlined text-success text-sm">login</span> Entradas
-                                </button>
-                                <button type="button" onclick="seleccionarTipo('salida', 'Salidas')"
-                                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-2">
-                                    <span class="material-icons-outlined text-warning text-sm">logout</span> Salidas
-                                </button>
+                        <!-- Camera Preview -->
+                        <div class="relative aspect-square rounded-2xl overflow-hidden bg-slate-900 shadow-inner group">
+                            <video id="video" autoplay playsinline class="w-full h-full object-cover"></video>
+                            <canvas id="canvas" class="hidden"></canvas>
+
+                            <!-- Captured Photo Preview -->
+                            <div id="photo-preview" class="absolute inset-0 hidden">
+                                <img id="captured-img" class="w-full h-full object-cover">
+                                <div
+                                    class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onclick="retakePhoto()"
+                                        class="bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-xl flex items-center gap-2 border border-white/30 hover:bg-white/30 transition-all">
+                                        <span class="material-icons-outlined">refresh</span> Tomar de nuevo
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Initial Loading State -->
+                            <div id="camera-loading"
+                                class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-white p-6 text-center">
+                                <div
+                                    class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4">
+                                </div>
+                                <p class="text-xs text-slate-400">Activando cámara...</p>
                             </div>
                         </div>
-                        <input type="hidden" id="filtro-tipo" value="todos">
-                    </div>
 
-                    <!-- Usuario Filter -->
-                    <div class="flex-1 min-w-[200px] relative">
-                        <label
-                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Usuario</label>
-                        <button type="button" onclick="toggleDropdown('dropdown-usuario-menu')" id="btn-usuario-filtro"
-                            class="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-                            <span id="selected-usuario-text">Todos los usuarios</span>
-                            <span class="material-icons-outlined text-slate-400">expand_more</span>
-                        </button>
-                        <div id="dropdown-usuario-menu"
-                            class="hidden absolute left-0 mt-2 w-full origin-top-left rounded-xl bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden max-h-60 overflow-y-auto">
-                            <div class="py-1" id="usuario-options">
-                                <!-- Options injected here -->
-                            </div>
+                        <div id="location-status"
+                            class="flex items-center gap-2 text-xs text-slate-400 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl">
+                            <span class="material-icons-outlined text-sm">location_on</span>
+                            <span id="location-text">Obteniendo ubicación...</span>
                         </div>
-                        <input type="hidden" id="filtro-usuario" value="">
-                    </div>
 
-                    <!-- Botón Filtrar -->
-                    <button onclick="aplicarFiltros()"
-                        class="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2">
-                        <span class="material-icons-outlined text-sm">filter_alt</span> Filtrar
-                    </button>
-                </div>
-            </div>
+                        <button id="btn-capture" onclick="takePhoto()"
+                            class="w-full bg-primary hover:bg-primary-hover text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-3">
+                            <span class="material-icons-outlined">camera</span>
+                            Capturar Foto
+                        </button>
 
-            <!-- Table -->
-            <div class="px-6 lg:px-10 pb-10">
-                <div
-                    class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left" id="tabla-marcaciones">
-                            <thead class="bg-slate-50 dark:bg-slate-900/50">
-                                <tr>
-                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                        Usuario</th>
-                                    <th
-                                        class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
-                                        Tipo</th>
-                                    <th
-                                        class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
-                                        Fecha</th>
-                                    <th
-                                        class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
-                                        Hora</th>
-                                    <th
-                                        class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
-                                        Ubicación</th>
-                                    <th
-                                        class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
-                                        Foto</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-                                <!-- Data injected here -->
-                            </tbody>
-                        </table>
+                        <button id="btn-save" onclick="guardarMarcacion()" disabled
+                            class="hidden w-full bg-success hover:bg-emerald-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-emerald-500/30 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span class="material-icons-outlined">check_circle</span>
+                            Confirmar Marcación
+                        </button>
                     </div>
                 </div>
             </div>

@@ -50,7 +50,7 @@ if (cachedUser) {
 
     function removeOverlay() {
         if (overlay) {
-            const el = overlay; // Capture reference before nullifying
+            const el = overlay;
             el.style.opacity = '0';
             setTimeout(() => el.remove(), 300);
             overlay = null;
@@ -61,9 +61,27 @@ if (cachedUser) {
         if (!user) {
             // Not logged in → clear cache and redirect
             sessionStorage.removeItem('helios-user');
+            localStorage.removeItem('helios-last-activity');
             window.location.href = 'login.html';
             return;
         }
+
+        // Check for inactivity timeout (1 hour = 3600000ms)
+        const lastActivity = localStorage.getItem('helios-last-activity');
+        const now = Date.now();
+        const ONE_HOUR = 3600000;
+
+        if (lastActivity && (now - parseInt(lastActivity)) > ONE_HOUR) {
+            sessionStorage.removeItem('helios-user');
+            localStorage.removeItem('helios-last-activity');
+            await firebase.auth().signOut();
+            window.location.href = 'login.html';
+            return;
+        }
+
+        // Update activity timestamp on first load
+        localStorage.setItem('helios-last-activity', now.toString());
+        initInactivityMonitor();
 
         try {
             const userData = await getUserData(user.uid);
@@ -98,6 +116,7 @@ if (cachedUser) {
                 };
             } else if (!userData.activo) {
                 sessionStorage.removeItem('helios-user');
+                localStorage.removeItem('helios-last-activity');
                 await firebase.auth().signOut();
                 window.location.href = 'login.html';
                 return;
@@ -138,7 +157,7 @@ if (cachedUser) {
                 window.location.href = 'index.html';
                 return;
             }
-            if (currentPage === 'usuarios.html' && window.__heliosUser.rol !== 'admin') {
+            if ((currentPage === 'usuarios.html' || currentPage === 'actividades.html') && window.__heliosUser.rol !== 'admin') {
                 window.location.href = 'index.html';
                 return;
             }
@@ -155,6 +174,31 @@ if (cachedUser) {
             }
         }
     });
+
+    /**
+     * Monitor user activity to handle automatic logout
+     */
+    function initInactivityMonitor() {
+        const updateActivity = () => {
+            localStorage.setItem('helios-last-activity', Date.now().toString());
+        };
+
+        // Events that count as activity
+        ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'].forEach(event => {
+            window.addEventListener(event, updateActivity, { passive: true });
+        });
+
+        // Periodic check every minute
+        setInterval(() => {
+            const lastActivity = localStorage.getItem('helios-last-activity');
+            const now = Date.now();
+            if (lastActivity && (now - parseInt(lastActivity)) > 3600000) {
+                firebase.auth().signOut().then(() => {
+                    window.location.href = 'login.html';
+                });
+            }
+        }, 60000);
+    }
 })();
 
 /**

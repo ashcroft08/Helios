@@ -19,6 +19,9 @@ const ADMIN_EMAILS = Object.keys(EMAIL_ROLES).filter(e => EMAIL_ROLES[e] === 'ad
  */
 async function loginUser(email, password) {
     try {
+        // Set persistence to SESSION (cleared when tab/window closes)
+        await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+
         const userCredential = await auth.signInWithEmailAndPassword(email, password);
         const user = userCredential.user;
 
@@ -56,7 +59,25 @@ async function loginUser(email, password) {
         return { success: true, user };
     } catch (error) {
         let message = 'Error al iniciar sesión';
-        switch (error.code) {
+        const errorCode = error.code || '';
+        const errorMessage = error.message || '';
+
+        // Si el error es un JSON (a veces Firebase devuelve strings JSON en el mensaje)
+        if (errorMessage.includes('{')) {
+            try {
+                const parsedError = JSON.parse(errorMessage.match(/\{.*\}/)[0]);
+                if (parsedError.error && parsedError.error.message) {
+                    const internalCode = parsedError.error.message;
+                    if (internalCode === 'INVALID_LOGIN_CREDENTIALS') {
+                        return { success: false, message: 'Credenciales inválidas. Verifica tu correo y contraseña' };
+                    }
+                }
+            } catch (e) {
+                // Si falla el parseo, seguimos con el flujo normal
+            }
+        }
+
+        switch (errorCode) {
             case 'auth/user-not-found':
                 message = 'No existe una cuenta con ese correo';
                 break;
@@ -70,10 +91,25 @@ async function loginUser(email, password) {
                 message = 'Demasiados intentos. Intenta más tarde';
                 break;
             case 'auth/invalid-credential':
+            case 'INVALID_LOGIN_CREDENTIALS':
                 message = 'Credenciales inválidas. Verifica tu correo y contraseña';
                 break;
+            case 'auth/network-request-failed':
+                message = 'Error de conexión. Verifica tu internet';
+                break;
+            case 'auth/user-disabled':
+                message = 'Tu cuenta ha sido desactivada';
+                break;
             default:
-                message = error.message || message;
+                // Si el mensaje contiene el código técnico directamente
+                if (errorMessage.includes('INVALID_LOGIN_CREDENTIALS')) {
+                    message = 'Credenciales inválidas. Verifica tu correo y contraseña';
+                } else if (errorMessage.length > 100) {
+                    // Si el mensaje es muy largo probablemente es un error técnico crudo
+                    message = 'Error inesperado al validar tus datos. Inténtalo de nuevo.';
+                } else {
+                    message = errorMessage || message;
+                }
         }
         return { success: false, message };
     }
