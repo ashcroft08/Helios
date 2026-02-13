@@ -1,16 +1,17 @@
 /**
  * Sistema de Gestión de Actividades
- * Maneja operaciones CRUD con borrado suave (activo/inactivo)
+ * Maneja una estructura jerárquica: Categoría -> Subactividades
  */
 
-let allActividades = {};
+let allCategorias = {};
 let filtroActual = 'todas';
 
 document.addEventListener('DOMContentLoaded', () => {
-    cargarActividades();
+    cargarCategorias();
 
-    // Envío de formulario
-    document.getElementById('form-actividad').addEventListener('submit', guardarActividad);
+    // Envío de formularios
+    document.getElementById('form-actividad').addEventListener('submit', guardarCategoria);
+    document.getElementById('form-subactividad').addEventListener('submit', guardarSubactividad);
 
     // Listener global para cerrar dropdowns
     window.addEventListener('click', (e) => {
@@ -39,207 +40,246 @@ function seleccionarFiltro(valor) {
     filtroActual = valor;
     document.getElementById('selected-estado-text').textContent = capitalize(valor);
     document.getElementById('dropdown-estado-menu').classList.add('hidden');
-    filtrarActividades();
+    filtrarCategorias();
 }
 
-// Cargar todas las actividades
-function cargarActividades() {
+// Cargar todas las categorías
+function cargarCategorias() {
     db.ref("actividades").on("value", snapshot => {
-        allActividades = snapshot.val() || {};
-        filtrarActividades();
+        allCategorias = snapshot.val() || {};
+        filtrarCategorias();
+
+        // Si el modal de subactividades está abierto, actualizar su lista
+        const subCatId = document.getElementById('sub-cat-id').value;
+        if (subCatId && !document.getElementById('modal-subactividad').classList.contains('hidden')) {
+            renderizarListaSubactividades(subCatId);
+        }
     });
 }
 
-// Filtrar y mostrar actividades
-function filtrarActividades() {
+// Filtrar y mostrar categorías
+function filtrarCategorias() {
     const busqueda = document.getElementById('buscar-actividad').value.toLowerCase();
     const container = document.getElementById('actividades-container');
     const emptyState = document.getElementById('empty-state');
     container.innerHTML = '';
 
     // Convertir objeto a array para fácil manipulación
-    const actividadesArray = Object.entries(allActividades).map(([nombre, activo]) => ({
-        nombre,
-        activo: activo === true
-    }));
+    const categoriasArray = Object.entries(allCategorias).map(([nombre, data]) => {
+        const esObjeto = typeof data === 'object' && data !== null;
+        return {
+            id: nombre,
+            nombre: nombre,
+            activo: esObjeto ? (data.activo !== false) : (data === true),
+            subactividades: esObjeto ? data : null
+        };
+    });
 
     // Ordenar alfabéticamente
-    actividadesArray.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    categoriasArray.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
     let count = 0;
-    actividadesArray.forEach(actividad => {
+    categoriasArray.forEach(cat => {
         // Aplicar filtros
-        if (filtroActual === 'activas' && !actividad.activo) return;
-        if (filtroActual === 'inactivas' && actividad.activo) return;
-        if (busqueda && !actividad.nombre.toLowerCase().includes(busqueda)) return;
+        if (filtroActual === 'activas' && !cat.activo) return;
+        if (filtroActual === 'inactivas' && cat.activo) return;
+        if (busqueda && !cat.nombre.toLowerCase().includes(busqueda)) return;
 
-        container.appendChild(crearTarjetaActividad(actividad));
+        container.appendChild(crearTarjetaCategoria(cat));
         count++;
     });
 
     emptyState.classList.toggle('hidden', count > 0);
 }
 
-// Crear tarjeta de actividad
-function crearTarjetaActividad(actividad) {
+// Crear tarjeta de categoría
+function crearTarjetaCategoria(cat) {
     const card = document.createElement('div');
     card.className = 'bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-shadow';
 
-    const statusColor = actividad.activo
+    const statusColor = cat.activo
         ? { bg: 'bg-success/10', text: 'text-success', label: 'Activa', icon: 'check_circle' }
         : { bg: 'bg-slate-100 dark:bg-slate-700', text: 'text-slate-500', label: 'Inactiva', icon: 'cancel' };
 
+    let numSub = 0;
+    if (cat.subactividades) {
+        numSub = Object.keys(cat.subactividades).filter(k => k !== 'activo').length;
+    }
+
     card.innerHTML = `
-        <!-- Status Bar -->
-        <div class="h-1.5 ${actividad.activo ? 'bg-success/30' : 'bg-slate-200 dark:bg-slate-600'}"></div>
-        
+        <div class="h-1.5 ${cat.activo ? 'bg-success/30' : 'bg-slate-200 dark:bg-slate-600'}"></div>
         <div class="p-5">
-            <!-- Header -->
             <div class="flex items-start justify-between mb-4">
                 <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-2xl ${actividad.activo ? 'bg-primary/10 text-primary' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'} flex items-center justify-center">
+                    <div class="w-12 h-12 rounded-2xl ${cat.activo ? 'bg-primary/10 text-primary' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'} flex items-center justify-center">
                         <span class="material-icons-outlined text-2xl">category</span>
                     </div>
                     <div>
-                        <h4 class="font-bold text-slate-800 dark:text-white text-lg">${capitalize(actividad.nombre)}</h4>
-                        <span class="px-2 py-0.5 rounded-lg text-xs font-bold ${statusColor.bg} ${statusColor.text} inline-flex items-center gap-1">
-                            <span class="material-icons-outlined text-xs">${statusColor.icon}</span>
-                            ${statusColor.label}
-                        </span>
+                        <h4 class="font-bold text-slate-800 dark:text-white text-lg">${capitalize(cat.nombre)}</h4>
+                        <div class="flex gap-2 items-center">
+                            <span class="px-2 py-0.5 rounded-lg text-xs font-bold ${statusColor.bg} ${statusColor.text} inline-flex items-center gap-1">
+                                <span class="material-icons-outlined text-xs">${statusColor.icon}</span>
+                                ${statusColor.label}
+                            </span>
+                            <span class="px-2 py-0.5 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
+                                ${numSub} Subactividades
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Info -->
-            <div class="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                <div class="flex items-center gap-2">
-                    <span class="material-icons-outlined text-base">label</span>
-                    <span>ID: <code class="bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-xs">${actividad.nombre}</code></span>
+            <div class="flex flex-col gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                <button onclick="gestionarSubactividades('${cat.id}')" 
+                    class="w-full py-2.5 px-3 rounded-xl bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-all flex items-center justify-center gap-2">
+                    <span class="material-icons-outlined text-base">list_alt</span> Gestionar Subactividades
+                </button>
+                <div class="flex gap-2">
+                    ${cat.activo ? `
+                        <button onclick="toggleEstado('${cat.id}', false)" 
+                            class="flex-1 py-2 px-3 rounded-lg bg-warning/10 text-warning text-sm font-medium hover:bg-warning/20 transition-colors flex items-center justify-center gap-1">
+                            <span class="material-icons-outlined text-sm">visibility_off</span>
+                        </button>
+                    ` : `
+                        <button onclick="toggleEstado('${cat.id}', true)" 
+                            class="flex-1 py-2 px-3 rounded-lg bg-success/10 text-success text-sm font-medium hover:bg-success/20 transition-colors flex items-center justify-center gap-1">
+                            <span class="material-icons-outlined text-sm">visibility</span>
+                        </button>
+                    `}
+                    <button onclick="editarCategoria('${cat.id}')" 
+                        class="py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                        <span class="material-icons-outlined text-sm">edit</span>
+                    </button>
+                    <button onclick="prepararEliminar('${cat.id}')" 
+                        class="py-2 px-3 rounded-lg text-danger hover:bg-danger/10 transition-colors">
+                        <span class="material-icons-outlined text-sm">delete</span>
+                    </button>
                 </div>
-            </div>
-            
-            <!-- Actions -->
-            <div class="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
-                ${actividad.activo ? `
-                    <button onclick="toggleEstado('${actividad.nombre}', false)" 
-                        class="flex-1 py-2 px-3 rounded-lg bg-warning/10 text-warning text-sm font-medium hover:bg-warning/20 transition-colors flex items-center justify-center gap-1">
-                        <span class="material-icons-outlined text-sm">visibility_off</span> Desactivar
-                    </button>
-                ` : `
-                    <button onclick="toggleEstado('${actividad.nombre}', true)" 
-                        class="flex-1 py-2 px-3 rounded-lg bg-success/10 text-success text-sm font-medium hover:bg-success/20 transition-colors flex items-center justify-center gap-1">
-                        <span class="material-icons-outlined text-sm">visibility</span> Activar
-                    </button>
-                `}
-                <button onclick="editarActividad('${actividad.nombre}')" 
-                    class="py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
-                    <span class="material-icons-outlined text-sm">edit</span>
-                </button>
-                <button onclick="prepararEliminar('${actividad.nombre}')" 
-                    class="py-2 px-3 rounded-lg text-danger hover:bg-danger/10 transition-colors">
-                    <span class="material-icons-outlined text-sm">delete</span>
-                </button>
             </div>
         </div>
     `;
-
     return card;
 }
 
-// Cambiar estado de actividad (borrado suave)
-function toggleEstado(nombre, nuevoEstado) {
-    db.ref(`actividades/${nombre}`).set(nuevoEstado)
-        .then(() => {
-            showToast(nuevoEstado ? 'Actividad activada' : 'Actividad desactivada');
-        })
-        .catch(err => showToast('Error: ' + err.message, 'error'));
+function toggleEstado(id, nuevoEstado) {
+    const data = allCategorias[id];
+    if (typeof data === 'object') {
+        db.ref(`actividades/${id}/activo`).set(nuevoEstado);
+    } else {
+        db.ref(`actividades/${id}`).set(nuevoEstado);
+    }
+    showToast(nuevoEstado ? 'Categoría activada' : 'Categoría desactivada');
 }
 
-// Abrir modal para nueva actividad
 function openModalActividad() {
     document.getElementById('actividad-id').value = '';
     document.getElementById('actividad-original-name').value = '';
     document.getElementById('form-actividad').reset();
-    document.getElementById('modal-actividad-title').textContent = 'Nueva Actividad';
-    document.getElementById('btn-submit-text').textContent = 'Crear Actividad';
-
+    document.getElementById('modal-actividad-title').textContent = 'Nueva Categoría';
+    document.getElementById('btn-submit-text').textContent = 'Crear Categoría';
     showModal('modal-actividad', 'modal-actividad-content');
 }
 
-// Editar actividad existente
-function editarActividad(nombre) {
-    document.getElementById('actividad-id').value = nombre;
-    document.getElementById('actividad-original-name').value = nombre;
-    document.getElementById('actividad-nombre').value = capitalize(nombre);
-    document.getElementById('modal-actividad-title').textContent = 'Editar Actividad';
+function editarCategoria(id) {
+    document.getElementById('actividad-id').value = id;
+    document.getElementById('actividad-original-name').value = id;
+    document.getElementById('actividad-nombre').value = capitalize(id);
+    document.getElementById('modal-actividad-title').textContent = 'Editar Categoría';
     document.getElementById('btn-submit-text').textContent = 'Guardar Cambios';
-
     showModal('modal-actividad', 'modal-actividad-content');
 }
 
-// Guardar actividad (crear o actualizar)
-function guardarActividad(e) {
+function guardarCategoria(e) {
     e.preventDefault();
-
     const originalName = document.getElementById('actividad-original-name').value;
     const nuevoNombre = document.getElementById('actividad-nombre').value.trim().toLowerCase();
-
-    if (!nuevoNombre) {
-        showToast('El nombre es requerido', 'error');
+    if (!nuevoNombre) return;
+    if ((!originalName || originalName !== nuevoNombre) && allCategorias.hasOwnProperty(nuevoNombre)) {
+        showToast('Ya existe una categoría con ese nombre', 'error');
         return;
     }
-
-    // Verificar duplicados (solo si crea nueva o cambia nombre)
-    if ((!originalName || originalName !== nuevoNombre) && allActividades.hasOwnProperty(nuevoNombre)) {
-        showToast('Ya existe una actividad con ese nombre', 'error');
-        return;
-    }
-
     if (originalName && originalName !== nuevoNombre) {
-        // Renombrando: eliminar vieja y crear nueva con mismo estado
-        const estadoAnterior = allActividades[originalName];
+        const data = allCategorias[originalName];
         db.ref(`actividades/${originalName}`).remove()
-            .then(() => db.ref(`actividades/${nuevoNombre}`).set(estadoAnterior))
+            .then(() => db.ref(`actividades/${nuevoNombre}`).set(data))
             .then(() => {
-                showToast('Actividad actualizada correctamente');
+                showToast('Categoría actualizada');
                 closeModalActividad();
-            })
-            .catch(err => showToast('Error: ' + err.message, 'error'));
+            });
     } else if (originalName) {
-        // Solo editando (nombre no cambió) - nada que actualizar ya que el único campo es nombre
-        showToast('Actividad sin cambios');
         closeModalActividad();
     } else {
-        // Creando nueva
-        db.ref(`actividades/${nuevoNombre}`).set(true)
+        db.ref(`actividades/${nuevoNombre}`).set({ activo: true })
             .then(() => {
-                showToast('Actividad creada correctamente');
+                showToast('Categoría creada');
                 closeModalActividad();
-            })
-            .catch(err => showToast('Error: ' + err.message, 'error'));
+            });
     }
 }
 
-// Preparar confirmación de eliminación
-function prepararEliminar(nombre) {
-    document.getElementById('actividad-a-eliminar').value = nombre;
-    document.getElementById('nombre-eliminar').textContent = capitalize(nombre);
+function gestionarSubactividades(catId) {
+    document.getElementById('sub-cat-id').value = catId;
+    document.getElementById('sub-cat-name').textContent = capitalize(catId);
+    document.getElementById('form-subactividad').reset();
+    renderizarListaSubactividades(catId);
+    showModal('modal-subactividad', 'modal-subactividad-content');
+}
+
+function renderizarListaSubactividades(catId) {
+    const lista = document.getElementById('subactividades-lista');
+    lista.innerHTML = '';
+    const data = allCategorias[catId];
+    if (typeof data !== 'object') return;
+    Object.entries(data).forEach(([subId, valor]) => {
+        if (subId === 'activo') return;
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl';
+        div.innerHTML = `
+            <span class="text-sm font-medium dark:text-white">${capitalize(subId)}</span>
+            <button onclick="eliminarSubactividad('${catId}', '${subId}')" class="text-danger hover:bg-danger/10 p-1.5 rounded-lg transition-colors">
+                <span class="material-icons-outlined text-sm">delete</span>
+            </button>
+        `;
+        lista.appendChild(div);
+    });
+    if (lista.children.length === 0) {
+        lista.innerHTML = '<p class="text-center text-slate-400 text-sm py-4">Sin subactividades</p>';
+    }
+}
+
+function guardarSubactividad(e) {
+    e.preventDefault();
+    const catId = document.getElementById('sub-cat-id').value;
+    const nombre = document.getElementById('sub-nombre').value.trim().toLowerCase();
+    if (!nombre) return;
+    db.ref(`actividades/${catId}/${nombre}`).set(true)
+        .then(() => {
+            document.getElementById('sub-nombre').value = '';
+            showToast('Subactividad añadida');
+        });
+}
+
+function eliminarSubactividad(catId, subId) {
+    if (confirm(`¿Eliminar subactividad "${subId}"?`)) {
+        db.ref(`actividades/${catId}/${subId}`).remove()
+            .then(() => showToast('Subactividad eliminada'));
+    }
+}
+
+function prepararEliminar(id) {
+    document.getElementById('actividad-a-eliminar').value = id;
+    document.getElementById('nombre-eliminar').textContent = capitalize(id);
     showModal('modal-confirmar', 'modal-confirmar-content');
 }
 
-// Confirmar eliminación permanente
 function confirmarEliminar() {
-    const nombre = document.getElementById('actividad-a-eliminar').value;
-
-    db.ref(`actividades/${nombre}`).remove()
+    const id = document.getElementById('actividad-a-eliminar').value;
+    db.ref(`actividades/${id}`).remove()
         .then(() => {
-            showToast('Actividad eliminada permanentemente');
+            showToast('Categoría eliminada');
             closeModalConfirmar();
-        })
-        .catch(err => showToast('Error: ' + err.message, 'error'));
+        });
 }
 
-// Funciones auxiliares de modales
 function showModal(modalId, contentId) {
     const modal = document.getElementById(modalId);
     const content = document.getElementById(contentId);
@@ -254,48 +294,35 @@ function showModal(modalId, contentId) {
 function closeModalActividad() {
     const modal = document.getElementById('modal-actividad');
     const content = document.getElementById('modal-actividad-content');
-    content.classList.remove('scale-100', 'opacity-100');
-    content.classList.add('scale-95', 'opacity-0');
-    setTimeout(() => {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }, 200);
+    content.classList.replace('scale-100', 'scale-95');
+    content.classList.replace('opacity-100', 'opacity-0');
+    setTimeout(() => modal.classList.add('hidden'), 200);
+}
+
+function closeModalSubactividad() {
+    const modal = document.getElementById('modal-subactividad');
+    const content = document.getElementById('modal-subactividad-content');
+    content.classList.replace('scale-100', 'scale-95');
+    content.classList.replace('opacity-100', 'opacity-0');
+    setTimeout(() => modal.classList.add('hidden'), 200);
 }
 
 function closeModalConfirmar() {
     const modal = document.getElementById('modal-confirmar');
     const content = document.getElementById('modal-confirmar-content');
-    content.classList.remove('scale-100', 'opacity-100');
-    content.classList.add('scale-95', 'opacity-0');
-    setTimeout(() => {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }, 200);
+    content.classList.replace('scale-100', 'scale-95');
+    content.classList.replace('opacity-100', 'opacity-0');
+    setTimeout(() => modal.classList.add('hidden'), 200);
 }
 
-// Notificación toast
 function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
-
-    const colors = type === 'error'
-        ? 'bg-danger text-white'
-        : 'bg-slate-900 dark:bg-slate-700 text-white';
-
-    const icon = type === 'error' ? 'error' : 'check_circle';
-
-    toast.className = `${colors} px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-slide-up`;
-    toast.innerHTML = `
-        <span class="material-icons-outlined text-lg">${icon}</span>
-        <span class="font-medium">${message}</span>
-    `;
-
+    toast.className = `bg-slate-900 dark:bg-slate-700 text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-slide-up ${type === 'error' ? 'border-r-4 border-danger' : ''}`;
+    toast.innerHTML = `<span class="material-icons-outlined">${type === 'error' ? 'error' : 'check_circle'}</span><span class="font-medium">${message}</span>`;
     container.appendChild(toast);
-
     setTimeout(() => {
         toast.style.opacity = '0';
-        toast.style.transform = 'translateY(10px)';
-        toast.style.transition = 'all 0.3s ease';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }

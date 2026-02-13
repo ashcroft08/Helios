@@ -147,14 +147,21 @@ function mostrarTabla(data, desde, hasta, sucursalFiltro) {
         const cumpleSucursal = !sucursalFiltro || sucursal.toLowerCase() === sucursalFiltro.toLowerCase();
 
         if (cumpleFecha && cumpleSucursal && folio.actividades) {
-            // Calculate aggregates
-            const actividadesKeys = Object.keys(folio.actividades);
-            const numActividades = actividadesKeys.length;
+            // Calculate aggregates for nested structure
+            let totalSubactividades = 0;
             let sumaPuntaje = 0;
-            actividadesKeys.forEach(key => {
-                sumaPuntaje += parseFloat(folio.actividades[key].puntuacion || 0);
+
+            Object.values(folio.actividades).forEach(catData => {
+                if (typeof catData === 'object') {
+                    Object.values(catData).forEach(subData => {
+                        sumaPuntaje += parseFloat(subData.puntuacion || 0);
+                        totalSubactividades++;
+                    });
+                }
             });
-            const promedio = numActividades > 0 ? (sumaPuntaje / numActividades).toFixed(1) : "0";
+
+            const promedio = totalSubactividades > 0 ? (sumaPuntaje / totalSubactividades).toFixed(1) : "0";
+            const numEvaluadas = totalSubactividades;
 
             // ROLE FILTER: If not admin, only show own folios
             const isOwner = (rawUsuario.toLowerCase() === window.__heliosUser?.nombre?.toLowerCase()) ||
@@ -184,7 +191,7 @@ function mostrarTabla(data, desde, hasta, sucursalFiltro) {
                 <td class="px-6 py-4 text-sm text-slate-500 text-center">${fechaCorta}</td>
                 <td class="px-6 py-4 text-center">
                     <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-xs font-bold rounded-lg">
-                        ${numActividades} evaluadas
+                        ${numEvaluadas} evaluadas
                     </span>
                 </td>
                 <td class="px-6 py-4 text-sm font-bold text-amber-500 text-center">${promedio}</td>
@@ -303,79 +310,108 @@ function closeModal() {
     }, 200);
 }
 
-// Configuración de Actividades del Folio
-const ACTIVIDADES_FOLIO = [
-    { id: 'atencion', label: 'Atención' },
-    { id: 'bodega', label: 'Bodega' },
-    { id: 'legumbres', label: 'Legumbres' },
-    { id: 'limpieza', label: 'Limpieza' },
-    { id: 'neveras', label: 'Neveras' },
-    { id: 'perchado', label: 'Perchado' }
-];
-
+// Configuración de Actividades del Folio (Dinamizada)
+let ACTIVIDADES_DINAMICAS = {}; // Estructura: { catId: { subId1: true, subId2: true } }
 let currentStep = 0;
-const totalSteps = ACTIVIDADES_FOLIO.length + 1; // Info General + 6 Actividades
+let totalSteps = 1;
 
 // Inicializar UI del formulario multi-pasos
-function initMultiStepForm() {
+async function initMultiStepForm() {
     const container = document.getElementById('dynamic-steps-container');
     if (!container) return;
 
-    container.innerHTML = ACTIVIDADES_FOLIO.map((act, index) => `
-        <div class="form-step hidden" data-step="${index + 1}">
-            <div class="space-y-6">
-                <div class="bg-primary/5 p-4 rounded-2xl border border-primary/10 mb-2 text-center">
-                    <h4 class="text-sm font-bold text-primary uppercase tracking-widest">${act.label}</h4>
-                </div>
-                
-                <div>
-                    <label class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 block">Puntuación (1-10)</label>
-                    <div class="flex flex-wrap gap-2 justify-center">
-                        ${Array.from({ length: 10 }, (_, i) => i + 1).map(num => `
-                            <button type="button" onclick="setScore('${act.id}', ${num})" 
-                                data-score-btn="${act.id}-${num}"
-                                class="score-btn w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold hover:bg-primary/10 transition-all dark:text-white">
-                                ${num}
-                            </button>
-                        `).join('')}
+    // Cargar actividades desde la base de datos
+    const snapshot = await db.ref("actividades").once("value");
+    const data = snapshot.val() || {};
+
+    // Filtrar solo las activas
+    ACTIVIDADES_DINAMICAS = {};
+    Object.entries(data).forEach(([catId, catData]) => {
+        const activo = typeof catData === 'object' ? (catData.activo !== false) : (catData === true);
+        if (activo) {
+            ACTIVIDADES_DINAMICAS[catId] = {};
+            if (typeof catData === 'object') {
+                Object.entries(catData).forEach(([subId, val]) => {
+                    if (subId !== 'activo') ACTIVIDADES_DINAMICAS[catId][subId] = val;
+                });
+            }
+        }
+    });
+
+    const categoryIds = Object.keys(ACTIVIDADES_DINAMICAS).sort();
+    totalSteps = categoryIds.length + 1;
+
+    container.innerHTML = categoryIds.map((catId, index) => {
+        const subactividades = Object.keys(ACTIVIDADES_DINAMICAS[catId]).sort();
+        const catLabel = catId.charAt(0).toUpperCase() + catId.slice(1);
+
+        return `
+            <div class="form-step hidden" data-step="${index + 1}">
+                <div class="space-y-6">
+                    <div class="bg-primary/5 p-4 rounded-2xl border border-primary/10 mb-2 text-center">
+                        <h4 class="text-sm font-bold text-primary uppercase tracking-widest">${catLabel}</h4>
                     </div>
-                    <input type="hidden" id="score-${act.id}" name="${act.id}-puntuacion" value="0">
-                </div>
+                    
+                    ${subactividades.map(subId => {
+            const subLabel = subId.charAt(0).toUpperCase() + subId.slice(1);
+            return `
+                        <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 mb-4">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 block">${subLabel}</label>
+                            
+                            <!-- Puntuación -->
+                            <div class="mb-4">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Puntuación (1-10)</label>
+                                <div class="flex flex-wrap gap-1.5 justify-center">
+                                    ${Array.from({ length: 10 }, (_, i) => i + 1).map(num => `
+                                        <button type="button" onclick="setScore('${catId}', '${subId}', ${num})" 
+                                            data-score-btn="${catId}-${subId}-${num}"
+                                            class="score-btn w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold hover:bg-primary/10 transition-all dark:text-white">
+                                            ${num}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                                <input type="hidden" id="score-${catId}-${subId}" name="${catId}-${subId}-puntuacion" value="0">
+                            </div>
 
-                <div>
-                    <label class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Comentario</label>
-                    <textarea id="comment-${act.id}" name="${act.id}-comentario" rows="3"
-                        class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:border-primary resize-none"
-                        placeholder="Observaciones de ${act.label}..."></textarea>
-                </div>
+                            <!-- Comentario -->
+                            <div class="mb-4">
+                                <textarea id="comment-${catId}-${subId}" rows="2"
+                                    class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm focus:ring-primary focus:border-primary resize-none"
+                                    placeholder="Observaciones de ${subLabel}..."></textarea>
+                            </div>
 
-                <div>
-                    <label class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Fotos de Evidencia</label>
-                    <div class="grid grid-cols-3 md:grid-cols-4 gap-3" id="preview-grid-${act.id}">
-                        <div class="relative group aspect-square">
-                            <input type="file" onchange="handleFileSelect(event, '${act.id}')" accept="image/*" multiple
-                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-                            <div class="w-full h-full bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center transition-all group-hover:border-primary">
-                                <span class="material-icons-outlined text-slate-400 group-hover:text-primary text-2xl">add_a_photo</span>
+                            <!-- Fotos -->
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Fotos de Evidencia</label>
+                                <div class="grid grid-cols-4 gap-2" id="preview-grid-${catId}-${subId}">
+                                    <div class="relative group aspect-square">
+                                        <input type="file" onchange="handleFileSelect(event, '${catId}', '${subId}')" accept="image/*" multiple
+                                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                        <div class="w-full h-full bg-white dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center transition-all group-hover:border-primary">
+                                            <span class="material-icons-outlined text-slate-400 group-hover:text-primary text-xl">add_a_photo</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                        `;
+        }).join('')}
                 </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // Alternar Botón de Puntuación
-function setScore(actId, score) {
-    const input = document.getElementById(`score-${actId}`);
+function setScore(catId, subId, score) {
+    const input = document.getElementById(`score-${catId}-${subId}`);
     if (input) input.value = score;
 
-    document.querySelectorAll(`[data-score-btn^="${actId}-"]`).forEach(btn => {
+    document.querySelectorAll(`[data-score-btn^="${catId}-${subId}-"]`).forEach(btn => {
         btn.classList.remove('bg-primary', 'text-white', 'border-primary');
         btn.classList.add('border-slate-200', 'dark:border-slate-700');
     });
-    const selected = document.querySelector(`[data-score-btn="${actId}-${score}"]`);
+    const selected = document.querySelector(`[data-score-btn="${catId}-${subId}-${score}"]`);
     if (selected) {
         selected.classList.add('bg-primary', 'text-white', 'border-primary');
         selected.classList.remove('border-slate-200', 'dark:border-slate-700');
@@ -383,22 +419,23 @@ function setScore(actId, score) {
 }
 
 // Gestión de Archivos Múltiples
-const pendingPhotos = {}; // actId -> File[]
+const pendingPhotos = {}; // "catId-subId" -> File[]
 
-function handleFileSelect(event, actId) {
+function handleFileSelect(event, catId, subId) {
     const files = Array.from(event.target.files);
-    if (!pendingPhotos[actId]) pendingPhotos[actId] = [];
+    const key = `${catId}-${subId}`;
+    if (!pendingPhotos[key]) pendingPhotos[key] = [];
 
     files.forEach(file => {
-        pendingPhotos[actId].push(file);
+        pendingPhotos[key].push(file);
         const reader = new FileReader();
         reader.onload = (e) => {
-            const grid = document.getElementById(`preview-grid-${actId}`);
+            const grid = document.getElementById(`preview-grid-${catId}-${subId}`);
             const div = document.createElement('div');
             div.className = 'relative aspect-square rounded-xl overflow-hidden border border-slate-200 group';
             div.innerHTML = `
                 <img src="${e.target.result}" class="w-full h-full object-cover">
-                <button type="button" onclick="removePendingPhoto('${actId}', ${pendingPhotos[actId].length - 1}, this)" 
+                <button type="button" onclick="removePendingPhoto('${catId}', '${subId}', ${pendingPhotos[key].length - 1}, this)" 
                     class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-100 transition-opacity">
                     <span class="material-icons-outlined text-[10px]">close</span>
                 </button>
@@ -409,8 +446,9 @@ function handleFileSelect(event, actId) {
     });
 }
 
-function removePendingPhoto(actId, index, btn) {
-    pendingPhotos[actId].splice(index, 1);
+function removePendingPhoto(catId, subId, index, btn) {
+    const key = `${catId}-${subId}`;
+    pendingPhotos[key].splice(index, 1);
     btn.parentElement.remove();
 }
 
@@ -440,7 +478,8 @@ function updateStepUI() {
 
     const indicator = document.getElementById('step-indicator');
     if (indicator) {
-        const stepLabel = currentStep === 0 ? 'Información General' : ACTIVIDADES_FOLIO[currentStep - 1].label;
+        const categoryIds = Object.keys(ACTIVIDADES_DINAMICAS).sort();
+        const stepLabel = currentStep === 0 ? 'Información General' : categoryIds[currentStep - 1].charAt(0).toUpperCase() + categoryIds[currentStep - 1].slice(1);
         indicator.textContent = `Paso ${currentStep + 1} de ${totalSteps}: ${stepLabel}`;
     }
 
@@ -460,17 +499,20 @@ function validateStep(step) {
             return false;
         }
     } else {
-        const actId = ACTIVIDADES_FOLIO[step - 1].id;
-        const score = document.getElementById(`score-${actId}`).value;
-        if (score === "0") {
-            showToast(`Por favor califica la actividad: ${ACTIVIDADES_FOLIO[step - 1].label}`, 'warning');
-            return false;
+        const catId = Object.keys(ACTIVIDADES_DINAMICAS).sort()[step - 1];
+        const subIds = Object.keys(ACTIVIDADES_DINAMICAS[catId]);
+
+        for (const subId of subIds) {
+            const score = document.getElementById(`score-${catId}-${subId}`).value;
+            if (score === "0") {
+                showToast(`Por favor califica la subactividad: ${subId}`, 'warning');
+                return false;
+            }
         }
     }
     return true;
 }
 
-// Lógica de guardado principal
 async function guardarFolioCompleto() {
     const btn = document.getElementById('btn-next');
     const originalText = btn.textContent;
@@ -487,23 +529,29 @@ async function guardarFolioCompleto() {
             actividades: {}
         };
 
-        // Subir fotos y recolectar datos
-        for (const act of ACTIVIDADES_FOLIO) {
-            let photoUrls = [];
-            const files = pendingPhotos[act.id] || [];
+        const categoryIds = Object.keys(ACTIVIDADES_DINAMICAS).sort();
+        for (const catId of categoryIds) {
+            folioData.actividades[catId] = {};
+            const subIds = Object.keys(ACTIVIDADES_DINAMICAS[catId]);
 
-            for (const file of files) {
-                const ref = storage.ref(`fotos_folios/${Date.now()}_${file.name}`);
-                const snap = await ref.put(file);
-                const url = await snap.ref.getDownloadURL();
-                photoUrls.push(url);
+            for (const subId of subIds) {
+                const key = `${catId}-${subId}`;
+                let photoUrls = [];
+                const files = pendingPhotos[key] || [];
+
+                for (const file of files) {
+                    const ref = storage.ref(`fotos_folios/${Date.now()}_${file.name}`);
+                    const snap = await ref.put(file);
+                    const url = await snap.ref.getDownloadURL();
+                    photoUrls.push(url);
+                }
+
+                folioData.actividades[catId][subId] = {
+                    puntuacion: parseInt(document.getElementById(`score-${catId}-${subId}`).value),
+                    comentario: document.getElementById(`comment-${catId}-${subId}`).value,
+                    fotos: photoUrls
+                };
             }
-
-            folioData.actividades[act.id] = {
-                puntuacion: parseInt(document.getElementById(`score-${act.id}`).value),
-                comentario: document.getElementById(`comment-${act.id}`).value,
-                fotos: photoUrls
-            };
         }
 
         const ref = idEdit ? db.ref(`folios/${idEdit}`) : db.ref(`folios`).push();
@@ -524,16 +572,41 @@ async function guardarFolioCompleto() {
 function verDetalle(folioId) {
     db.ref(`folios/${folioId}`).once("value").then(snapshot => {
         const folio = snapshot.val();
-        console.log("Datos del folio cargado para el modal:", folio);
         if (!folio || !folio.actividades) return;
 
-        // Calcular promedio
-        const actividadesKeys = Object.keys(folio.actividades);
-        let sumaPuntaje = 0;
-        actividadesKeys.forEach(key => {
-            sumaPuntaje += parseFloat(folio.actividades[key].puntuacion || 0);
+        // Calcular promedio total y agrupar por categoría
+        let sumaPuntajeTotal = 0;
+        let totalSubactividades = 0;
+        const gruposCategorias = {};
+
+        Object.entries(folio.actividades).forEach(([catId, catData]) => {
+            if (typeof catData === 'object') {
+                gruposCategorias[catId] = {
+                    subactividades: [],
+                    promedioCat: 0,
+                    sumaPuntajeCat: 0
+                };
+
+                Object.entries(catData).forEach(([subId, subData]) => {
+                    if (subId === 'activo') return;
+                    const puntuacion = parseFloat(subData.puntuacion || 0);
+                    sumaPuntajeTotal += puntuacion;
+                    totalSubactividades++;
+
+                    gruposCategorias[catId].sumaPuntajeCat += puntuacion;
+                    gruposCategorias[catId].subactividades.push({
+                        id: subId,
+                        ...subData
+                    });
+                });
+
+                if (gruposCategorias[catId].subactividades.length > 0) {
+                    gruposCategorias[catId].promedioCat = (gruposCategorias[catId].sumaPuntajeCat / gruposCategorias[catId].subactividades.length).toFixed(1);
+                }
+            }
         });
-        const promedio = actividadesKeys.length > 0 ? (sumaPuntaje / actividadesKeys.length).toFixed(1) : "0";
+
+        const promedioGral = totalSubactividades > 0 ? (sumaPuntajeTotal / totalSubactividades).toFixed(1) : "0";
 
         // Llenar header
         const elCorreo = document.getElementById("detalle-correo");
@@ -544,49 +617,84 @@ function verDetalle(folioId) {
         if (elCorreo) elCorreo.textContent = folio.usuario || "Usuario Desconocido";
         if (elSucursal) elSucursal.innerHTML = `<span class="material-icons-outlined text-xs text-primary">location_on</span> ${folio.sucursal || "General"}`;
         if (elFecha) elFecha.innerHTML = `<span class="material-icons-outlined text-xs text-primary">calendar_today</span> ${folio.fecha ? folio.fecha.substring(0, 10) : ""}`;
-        if (elPromedio) elPromedio.innerHTML = `<span class="material-icons-outlined text-sm">star</span> ${promedio} <span class="text-xs text-slate-400 font-medium">/ 10</span>`;
+        if (elPromedio) elPromedio.innerHTML = `<span class="material-icons-outlined text-sm">star</span> ${promedioGral} <span class="text-xs text-slate-400 font-medium">/ 10</span>`;
 
-        // Generar tarjetas de actividades
+        // Generar Visualización Agrupada
         const actividadesContainer = document.getElementById("detalle-actividades");
         actividadesContainer.innerHTML = "";
 
-        actividadesKeys.forEach(actividadNombre => {
-            const act = folio.actividades[actividadNombre];
-            const displayNombre = actividadNombre.charAt(0).toUpperCase() + actividadNombre.slice(1);
+        Object.entries(gruposCategorias).forEach(([catId, data]) => {
+            const displayCat = catId.charAt(0).toUpperCase() + catId.slice(1);
 
-            // Construir HTML de fotos si existen
-            let fotosHtml = "";
-            if (act.fotos && Array.isArray(act.fotos) && act.fotos.length > 0) {
-                fotosHtml = `
-                    <div class="flex gap-2 mt-3 overflow-x-auto pb-2">
-                        ${act.fotos.map(url => `
-                            <img src="${url}" alt="Evidencia" 
-                                class="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
-                                onclick="abrirModalImagen('${url}')">
-                        `).join('')}
+            const catSection = document.createElement("div");
+            catSection.className = "mb-8 bg-white dark:bg-slate-800/40 rounded-3xl border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm";
+
+            // Category Header
+            let headerHtml = `
+                <div class="px-5 py-4 bg-slate-50/50 dark:bg-slate-900/30 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                            <span class="material-icons-outlined text-xl">folder</span>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-800 dark:text-white">${displayCat}</h4>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${data.subactividades.length} Subactividades</p>
+                        </div>
                     </div>
-                `;
-            }
-
-            const card = document.createElement("div");
-            card.className = "p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700";
-            card.innerHTML = `
-                <div class="flex items-center justify-between mb-2">
-                    <span class="px-2.5 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 text-xs font-bold rounded-lg uppercase">
-                        ${displayNombre}
-                    </span>
-                    <div class="flex items-center gap-1 text-amber-500">
-                        <span class="material-icons-outlined text-sm">star</span>
-                        <span class="font-bold">${act.puntuacion || 0}</span>
-                        <span class="text-xs text-slate-400">/ 10</span>
+                    <div class="flex items-center gap-2 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                        <span class="material-icons-outlined text-amber-500 text-sm">star</span>
+                        <span class="text-sm font-bold text-slate-700 dark:text-white">${data.promedioCat}</span>
                     </div>
                 </div>
-                <p class="text-sm text-slate-600 dark:text-slate-400 italic">
-                    ${act.comentario || "Sin comentarios para esta actividad."}
-                </p>
-                ${fotosHtml}
+                <div class="p-5 space-y-6">
             `;
-            actividadesContainer.appendChild(card);
+
+            // Sub-activities
+            data.subactividades.forEach(sub => {
+                const displaySub = sub.id.charAt(0).toUpperCase() + sub.id.slice(1);
+
+                let fotosHtml = "";
+                if (sub.fotos && Array.isArray(sub.fotos) && sub.fotos.length > 0) {
+                    fotosHtml = `
+                        <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 mt-4">
+                            ${sub.fotos.map(url => `
+                                <div class="aspect-square rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700 group cursor-pointer" onclick="abrirModalImagen('${url}')">
+                                    <img src="${url}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                const hasScore = sub.puntuacion !== undefined && sub.puntuacion !== null && sub.puntuacion !== 0;
+                const scoreDisplay = hasScore ? `${sub.puntuacion} / 10` : "No se calificó";
+                const scoreColor = !hasScore ? 'text-slate-500 bg-slate-100 dark:bg-slate-700' : (sub.puntuacion >= 8 ? 'text-success bg-success/10' : (sub.puntuacion >= 5 ? 'text-warning bg-warning/10' : 'text-danger bg-danger/10'));
+
+                headerHtml += `
+                    <div class="relative pl-6 border-l-2 border-slate-100 dark:border-slate-700 pb-2 last:pb-0">
+                        <!-- Dot indicator -->
+                        <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-600"></div>
+                        
+                        <div class="flex items-start justify-between mb-2">
+                            <h5 class="text-sm font-bold text-slate-700 dark:text-slate-200">${displaySub}</h5>
+                            <span class="px-2 py-0.5 rounded-lg text-xs font-black ${scoreColor}">
+                                ${scoreDisplay}
+                            </span>
+                        </div>
+                        
+                        <div class="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-inner">
+                            <p class="text-xs text-slate-500 dark:text-slate-400 italic leading-relaxed">
+                                ${sub.comentario || "Sin observaciones adicionales."}
+                            </p>
+                            ${fotosHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            headerHtml += `</div>`;
+            catSection.innerHTML = headerHtml;
+            actividadesContainer.appendChild(catSection);
         });
 
         // Implementación del mapa
