@@ -132,6 +132,8 @@ function cargarSucursales() {
         }
 
         if (formSelect) {
+            formSelect.innerHTML = '<option value="">Seleccionar</option>';
+            formSelect.innerHTML += '<option value="TODAS">Todas las sucursales</option>';
             sucursalesList.forEach(suc => {
                 formSelect.innerHTML += `<option value="${suc}">${capitalize(suc)}</option>`;
             });
@@ -411,6 +413,23 @@ function guardarTarea(e) {
             .catch(err => showToast('Error: ' + err.message, 'error'));
     } else {
         // Create new
+        if (tareaData.sucursal === 'TODAS') {
+            const promises = sucursalesList.map(suc => {
+                const multiTareaData = { ...tareaData, sucursal: suc };
+                multiTareaData.fechaCreacion = new Date().toISOString();
+                multiTareaData.asignadoPor = window.__heliosUser?.nombre || 'Admin';
+                return db.ref('tareas').push(multiTareaData);
+            });
+
+            Promise.all(promises)
+                .then(() => {
+                    showToast(`Se han creado ${promises.length} tareas correctamente`);
+                    closeModalTarea();
+                })
+                .catch(err => showToast('Error: ' + err.message, 'error'));
+            return;
+        }
+
         tareaData.fechaCreacion = new Date().toISOString();
         tareaData.asignadoPor = window.__heliosUser?.nombre || 'Admin';
 

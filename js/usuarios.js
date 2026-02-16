@@ -16,19 +16,49 @@ function keyToEmail(key) {
     return key.replace(/,/g, '.');
 }
 
-// ── Load registered users ──────────────────────────────────────
+// ── Load registered and pending users ────────────────────────────
 function cargarUsuarios() {
-    db.ref('usuarios').on('value', (snapshot) => {
-        usuariosData = [];
-        const data = snapshot.val();
-        if (data) {
-            Object.keys(data).forEach(uid => {
-                usuariosData.push({ uid, ...data[uid] });
+    // Listen to both collections
+    const usersRef = db.ref('usuarios');
+    const pendingRef = db.ref('roles_asignados');
+
+    function syncData() {
+        Promise.all([
+            usersRef.once('value'),
+            pendingRef.once('value')
+        ]).then(([usersSnap, pendingSnap]) => {
+            usuariosData = [];
+            const users = usersSnap.val() || {};
+            const pending = pendingSnap.val() || {};
+
+            // Add registered users
+            Object.keys(users).forEach(uid => {
+                usuariosData.push({ uid, ...users[uid], isPending: false });
             });
-        }
-        renderUsuarios();
-        updateStats();
-    });
+
+            // Add pending users (only if not already registered with same email)
+            const registeredEmails = new Set(usuariosData.map(u => u.email?.toLowerCase()));
+            Object.keys(pending).forEach(key => {
+                const item = pending[key];
+                if (!registeredEmails.has(item.email?.toLowerCase())) {
+                    usuariosData.push({
+                        uid: null,
+                        emailKey: key,
+                        ...item,
+                        isPending: true,
+                        activo: true // Pending users are implicitly active for management
+                    });
+                }
+            });
+
+            renderUsuarios();
+            updateStats();
+        });
+    }
+
+    // Subscribe to changes on both
+    usersRef.on('value', syncData);
+    pendingRef.on('value', syncData);
 }
 
 // ── Render registered users table ──────────────────────────────
@@ -57,22 +87,27 @@ function renderUsuarios() {
                 ? '<span class="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full bg-success/10 text-success"><span class="material-icons-outlined text-sm">badge</span>Supervisor/a</span>'
                 : '<span class="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full bg-warning/10 text-warning"><span class="material-icons-outlined text-sm">help_outline</span>Sin rol</span>';
 
-        const estadoBadge = u.activo !== false
-            ? '<span class="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Activo</span>'
-            : '<span class="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Inactivo</span>';
+        const estadoBadge = u.isPending
+            ? '<span class="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full bg-warning/10 text-warning ring-1 ring-warning/20"><span class="material-icons-outlined text-xs">hourglass_empty</span>Pendiente inicio</span>'
+            : u.activo !== false
+                ? '<span class="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Activo</span>'
+                : '<span class="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Inactivo</span>';
 
-        const fecha = u.creadoEn ? new Date(u.creadoEn).toLocaleDateString('es-MX', {
+        const fecha = (u.creadoEn || u.asignadoEn) ? new Date(u.creadoEn || u.asignadoEn).toLocaleDateString('es-MX', {
             day: '2-digit', month: 'short', year: 'numeric'
         }) : 'N/A';
 
         const isCurrentUser = window.__heliosUser && window.__heliosUser.uid === u.uid;
+
+        // Identificador para edición/eliminación
+        const id = u.isPending ? `pending:${u.emailKey}` : u.uid;
 
         return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl ${u.rol === 'admin' ? 'bg-accent/10' : 'bg-primary/10'} flex items-center justify-center flex-shrink-0">
-                            <span class="material-icons-outlined ${u.rol === 'admin' ? 'text-accent' : 'text-primary'} text-lg">person</span>
+                            <span class="material-icons-outlined ${u.rol === 'admin' ? 'text-accent' : 'text-primary'} text-lg">${u.isPending ? 'mail' : 'person'}</span>
                         </div>
                         <div class="min-w-0">
                             <p class="text-sm font-semibold text-slate-800 dark:text-white truncate">${u.nombre || 'Sin nombre'}</p>
@@ -85,17 +120,23 @@ function renderUsuarios() {
                 <td class="px-6 py-4 text-center text-sm text-slate-500 dark:text-slate-400">${fecha}</td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-2">
-                        <button onclick="editarUsuario('${u.uid}')" title="Editar"
+                        <button onclick="editarUsuario('${id}')" title="Editar"
                             class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
                             <span class="material-icons-outlined text-slate-400 hover:text-primary text-lg">edit</span>
                         </button>
                         ${!isCurrentUser ? `
-                        <button onclick="toggleActivoUsuario('${u.uid}', ${u.activo !== false})" title="${u.activo !== false ? 'Desactivar' : 'Activar'}"
-                            class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-                            <span class="material-icons-outlined ${u.activo !== false ? 'text-slate-400 hover:text-danger' : 'text-green-500'} text-lg">
-                                ${u.activo !== false ? 'person_off' : 'person'}
-                            </span>
-                        </button>
+                            <button onclick="eliminarUsuario('${id}')" title="Eliminar"
+                                class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                                <span class="material-icons-outlined text-slate-400 hover:text-danger text-lg">delete</span>
+                            </button>
+                            ${!u.isPending ? `
+                                <button onclick="toggleActivoUsuario('${u.uid}', ${u.activo !== false})" title="${u.activo !== false ? 'Desactivar' : 'Activar'}"
+                                    class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                                    <span class="material-icons-outlined ${u.activo !== false ? 'text-slate-400 hover:text-danger' : 'text-green-500'} text-lg">
+                                        ${u.activo !== false ? 'person_off' : 'person'}
+                                    </span>
+                                </button>
+                            ` : ''}
                         ` : '<span class="px-2 py-1 text-xs text-slate-400 italic">Tú</span>'}
                     </div>
                 </td>
@@ -137,19 +178,34 @@ function closeModalUsuario() {
 }
 
 // ── Edit existing user ─────────────────────────────────────────
-function editarUsuario(uid) {
-    const user = usuariosData.find(u => u.uid === uid);
+function editarUsuario(id) {
+    let user;
+    if (id.startsWith('pending:')) {
+        const key = id.replace('pending:', '');
+        user = usuariosData.find(u => u.isPending && u.emailKey === key);
+    } else {
+        user = usuariosData.find(u => u.uid === id);
+    }
+
     if (!user) return;
 
-    editingUid = uid;
-    document.getElementById('usuario-uid').value = uid;
+    editingUid = id;
+    document.getElementById('usuario-uid').value = id;
     document.getElementById('usuario-nombre').value = user.nombre || '';
     document.getElementById('modal-usuario-title').textContent = 'Editar Usuario';
     document.getElementById('btn-usuario-text').textContent = 'Guardar Cambios';
     document.getElementById('btn-usuario-icon').textContent = 'save';
     document.getElementById('usuario-error').classList.add('hidden');
 
-    document.getElementById('campo-email').style.display = 'none';
+    // Email editing only for pending users
+    if (user.isPending) {
+        document.getElementById('campo-email').style.display = '';
+        document.getElementById('usuario-email').value = user.email || '';
+        document.getElementById('usuario-email').disabled = true; // Still disabled but visible
+    } else {
+        document.getElementById('campo-email').style.display = 'none';
+    }
+
     document.getElementById('campo-password').style.display = 'none';
     document.getElementById('usuario-email').required = false;
     document.getElementById('usuario-password').required = false;
@@ -158,6 +214,29 @@ function editarUsuario(uid) {
     if (rolRadio) rolRadio.checked = true;
 
     showModal('modal-usuario', 'modal-usuario-content');
+}
+
+// ── Delete user or pending assignment ────────────────────────────
+async function eliminarUsuario(id) {
+    const isPending = id.startsWith('pending:');
+    const msg = isPending
+        ? '¿Deseas cancelar esta pre-asignación? El usuario no tendrá rol cuando inicie sesión.'
+        : '¿Estás seguro de eliminar este usuario de la base de datos? Sus registros no se borrarán pero no podrá acceder.';
+
+    if (!confirm(msg)) return;
+
+    try {
+        if (isPending) {
+            const key = id.replace('pending:', '');
+            await db.ref(`roles_asignados/${key}`).remove();
+        } else {
+            await db.ref(`usuarios/${id}`).remove();
+        }
+        showToast('Usuario eliminado correctamente', 'success');
+    } catch (err) {
+        showToast('Error al eliminar el usuario', 'error');
+        console.error(err);
+    }
 }
 
 // ── Toggle active status ───────────────────────────────────────
@@ -201,7 +280,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (editingUid) {
             try {
-                await db.ref(`usuarios/${editingUid}`).update({ nombre, rol });
+                if (editingUid.startsWith('pending:')) {
+                    const key = editingUid.replace('pending:', '');
+                    await db.ref(`roles_asignados/${key}`).update({ nombre, rol });
+                } else {
+                    await db.ref(`usuarios/${editingUid}`).update({ nombre, rol });
+                }
+
                 showToast('Usuario actualizado correctamente', 'success');
                 closeModalUsuario();
 
