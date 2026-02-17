@@ -5,6 +5,7 @@
 
 let allTareas = {};
 let sucursalesList = [];
+let usuariosCache = {}; // Global cache for mapping email/uid to name
 
 document.addEventListener('DOMContentLoaded', () => {
     cargarTareas();
@@ -154,12 +155,19 @@ function cargarEncargados() {
         // Clear options except the placeholder
         select.innerHTML = '<option value="">Seleccionar encargado</option>';
 
-        // Build sorted list of active users
+        // Build sorted list of active users and populate cache
+        usuariosCache = {};
         const users = [];
         Object.keys(data).forEach(uid => {
             const u = data[uid];
             if (u.activo !== false && u.rol === 'encargado') {
-                users.push({ uid, nombre: u.nombre || u.email, rol: u.rol });
+                const name = u.nombre || u.email;
+                const email = u.email;
+                users.push({ uid, nombre: name, email: email, rol: u.rol });
+
+                // Map both email and uid to name for safety
+                if (email) usuariosCache[email.toLowerCase()] = name;
+                usuariosCache[uid] = name;
             }
         });
         users.sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -167,7 +175,8 @@ function cargarEncargados() {
         users.forEach(u => {
             const rolLabel = u.rol === 'admin' ? 'Admin' : 'Supervisor/a';
             const option = document.createElement('option');
-            option.value = u.nombre;
+            // Use email as the value for unique identification
+            option.value = u.email || u.uid;
             option.textContent = `${u.nombre} (${rolLabel})`;
             select.appendChild(option);
         });
@@ -228,12 +237,17 @@ function filtrarTareas() {
         if (sucursalFiltro && tarea.sucursal?.toLowerCase() !== sucursalFiltro.toLowerCase()) return;
 
         // ROLE FILTER: If not admin, only show assigned tasks
-        if (window.__heliosUser?.rol !== 'admin' && tarea.asignadoA !== window.__heliosUser?.nombre) {
+        // Comparison by e-mail (new) or name (legacy)
+        const userEmail = window.__heliosUser?.email?.toLowerCase();
+        const userName = window.__heliosUser?.nombre?.toLowerCase();
+        const assignedTo = tarea.asignadoA?.toLowerCase();
+
+        if (window.__heliosUser?.rol !== 'admin' && assignedTo !== userEmail && assignedTo !== userName) {
             return;
         }
 
         if (busqueda && !tarea.titulo.toLowerCase().includes(busqueda) &&
-            !tarea.asignadoA.toLowerCase().includes(busqueda)) return;
+            !(usuariosCache[assignedTo] || assignedTo).toLowerCase().includes(busqueda)) return;
 
         container.appendChild(crearTarjetaTarea(tarea));
         count++;
@@ -300,7 +314,7 @@ function crearTarjetaTarea(tarea) {
             <div class="space-y-2 text-sm mb-4">
                 <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                     <span class="material-icons-outlined text-base">person</span>
-                    <span>${tarea.asignadoA}</span>
+                    <span>${usuariosCache[tarea.asignadoA?.toLowerCase()] || tarea.asignadoA}</span>
                 </div>
                 <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                     <span class="material-icons-outlined text-base">location_on</span>
@@ -315,12 +329,18 @@ function crearTarjetaTarea(tarea) {
             <!-- Actions -->
             <div class="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
                 ${tarea.estado === 'completado' ? `
-                    <button onclick="verTareaCompletada('${tarea.id}')" class="flex-1 py-2 px-3 rounded-lg bg-success/10 text-success text-sm font-medium hover:bg-success/20 transition-colors flex items-center justify-center gap-1">
+                    <button onclick="verDetallesTarea('${tarea.id}')" class="flex-1 py-2 px-3 rounded-lg bg-success/10 text-success text-sm font-medium hover:bg-success/20 transition-colors flex items-center justify-center gap-1">
                         <span class="material-icons-outlined text-sm">visibility</span> Ver evidencia
                     </button>
                 ` : window.__heliosUser?.rol === 'admin' ? `
-                    <button onclick="editarTarea('${tarea.id}')" class="flex-1 py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-1">
-                        <span class="material-icons-outlined text-sm">edit</span> Editar
+                     <button onclick="verDetallesTarea('${tarea.id}')" class="flex-1 py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-1" title="Ver detalles">
+                        <span class="material-icons-outlined text-sm">visibility</span> Ver
+                    </button>
+                    <button onclick="completarTareaRapido('${tarea.id}')" class="flex-1 py-2 px-3 rounded-lg bg-success/10 text-success text-sm font-medium hover:bg-success/20 transition-colors flex items-center justify-center gap-1" title="Completado rápido">
+                        <span class="material-icons-outlined text-sm">check_circle</span> Completar
+                    </button>
+                    <button onclick="editarTarea('${tarea.id}')" class="p-2 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Editar tarea">
+                        <span class="material-icons-outlined text-sm">edit</span>
                     </button>
                 ` : `
                     <button onclick="abrirModalCompletar('${tarea.id}')" class="flex-1 py-2 px-3 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors flex items-center justify-center gap-1">
@@ -329,7 +349,7 @@ function crearTarjetaTarea(tarea) {
                 `}
                 
                 ${window.__heliosUser?.rol === 'admin' ? `
-                <button onclick="eliminarTarea('${tarea.id}')" class="py-2 px-3 rounded-lg text-danger hover:bg-danger/10 transition-colors">
+                <button onclick="eliminarTarea('${tarea.id}')" class="p-2 rounded-lg text-danger hover:bg-danger/10 transition-colors" title="Eliminar">
                     <span class="material-icons-outlined text-sm">delete</span>
                 </button>
                 ` : ''}
@@ -443,26 +463,32 @@ function guardarTarea(e) {
 }
 
 // Delete task
-function eliminarTarea(id) {
-    if (confirm('¿Estás seguro de eliminar esta tarea?')) {
-        db.ref(`tareas/${id}`).remove()
-            .then(() => showToast('Tarea eliminada'))
-            .catch(err => showToast('Error: ' + err.message, 'error'));
-    }
+async function eliminarTarea(id) {
+    const confirmacion = await showConfirm(
+        'Eliminar Tarea',
+        '¿Estás seguro de eliminar esta tarea? Esta acción no se puede deshacer.',
+        'danger'
+    );
+    if (!confirmacion) return;
+    db.ref(`tareas/${id}`).remove()
+        .then(() => showToast('Tarea eliminada'))
+        .catch(err => showToast('Error: ' + err.message, 'error'));
 }
 
-// View completed task with evidence
-function verTareaCompletada(id) {
+// View task details (works for all states)
+function verDetallesTarea(id) {
     const tarea = allTareas[id];
     if (!tarea) return;
 
-    // Handle both single URL (fotoCumplimiento) and array (fotos) formats
+    const isCompletada = tarea.estado === 'completado';
+
+    // Handle photos
     let fotosHtml = '';
     const fotoUrl = tarea.fotoCumplimiento || (tarea.completada?.fotos?.[0]);
     if (fotoUrl) {
         fotosHtml = `
             <div class="mt-4">
-                <p class="text-xs font-bold text-slate-500 uppercase mb-2">Evidencia Fotográfica</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Evidencia Fotográfica</p>
                 <div class="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
                     <img src="${fotoUrl}" alt="Evidencia" class="w-full max-h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity" onclick="window.open('${fotoUrl}', '_blank')">
                 </div>
@@ -470,19 +496,45 @@ function verTareaCompletada(id) {
         `;
     }
 
-    // Handle date: fechaCumplido or completada.fecha
+    // Handle completion date
     const fechaCompletado = tarea.fechaCumplido || tarea.completada?.fecha;
     const fechaFormateada = fechaCompletado ? new Date(fechaCompletado).toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A';
+
+    // Status colors
+    const estadoLabels = {
+        'pendiente': 'Pendiente',
+        'en_progreso': 'En Progreso',
+        'completado': 'Completada',
+        'vencida': 'Vencida'
+    };
+    const estadoColors = {
+        'pendiente': 'text-slate-500 bg-slate-100 dark:bg-slate-700',
+        'en_progreso': 'text-info bg-info/10',
+        'completado': 'text-success bg-success/10',
+        'vencida': 'text-danger bg-danger/10'
+    };
+
+    // Format description to handle dashes as line breaks
+    const formatDescription = (text) => {
+        if (!text) return "Sin descripción adicional.";
+        // Replace " -" or "-" with "<br>-" for better list visibility
+        // but avoid breaking words like "anti-gravity" (though less common in this context)
+        // A simple approach is replacing " -" with "\n-"
+        return text.replace(/(\s-|-)/g, '\n-').trim();
+    };
 
     const content = document.getElementById('modal-ver-content');
     content.innerHTML = `
         <div class="p-6 border-b border-slate-200 dark:border-slate-700">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-success/10 text-success flex items-center justify-center">
-                        <span class="material-icons-outlined">task_alt</span>
+                    <div class="w-10 h-10 rounded-xl ${isCompletada ? 'bg-success/10 text-success' : 'bg-primary/10 text-primary'} flex items-center justify-center">
+                        <span class="material-icons-outlined">${isCompletada ? 'task_alt' : 'info'}</span>
                     </div>
-                    <h3 class="text-lg font-bold text-slate-800 dark:text-white">Tarea Completada</h3>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800 dark:text-white">Detalles de la Tarea</h3>
+                        <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${estadoColors[tarea.estado]}">${estadoLabels[tarea.estado]}</span>
+                    </div>
                 </div>
                 <button onclick="closeModalVer()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
                     <span class="material-icons-outlined text-slate-400">close</span>
@@ -491,24 +543,61 @@ function verTareaCompletada(id) {
         </div>
         <div class="p-6 overflow-y-auto max-h-[70vh]">
             <h4 class="font-bold text-slate-800 dark:text-white text-lg mb-2">${tarea.titulo}</h4>
-            ${tarea.descripcion ? `<p class="text-sm text-slate-500 dark:text-slate-400 mb-4">${tarea.descripcion}</p>` : ''}
-            
-            <div class="space-y-3 text-sm">
-                <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                    <span class="material-icons-outlined text-base">person</span>
-                    <span>Asignado a: <strong>${tarea.asignadoA}</strong></span>
-                </div>
-                <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                    <span class="material-icons-outlined text-base">location_on</span>
-                    <span>${tarea.sucursal}</span>
-                </div>
-                <div class="flex items-center gap-2 text-success">
-                    <span class="material-icons-outlined text-base">check_circle</span>
-                    <span>Completada: <strong>${fechaFormateada}</strong></span>
-                </div>
+            <div class="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 mb-6">
+                <p class="text-sm text-slate-600 dark:text-slate-400 italic whitespace-pre-line">${formatDescription(tarea.descripcion)}</p>
             </div>
             
-            ${fotosHtml}
+            <div class="space-y-4 text-sm">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Asignado a</p>
+                        <div class="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-medium">
+                            <span class="material-icons-outlined text-base">person</span>
+                            <span>${tarea.asignadoA}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Sucursal</p>
+                        <div class="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-medium">
+                            <span class="material-icons-outlined text-base">location_on</span>
+                            <span>${tarea.sucursal}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Fecha Límite</p>
+                    <div class="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-medium">
+                        <span class="material-icons-outlined text-base">calendar_today</span>
+                        <span>${new Date(tarea.fechaLimite).toLocaleDateString('es', { dateStyle: 'long' })}</span>
+                    </div>
+                </div>
+
+                ${isCompletada ? `
+                <div class="pt-4 border-t border-slate-100 dark:border-slate-700">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Información de Cumplimiento</p>
+                    <div class="bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl p-4 border border-emerald-100 dark:border-emerald-900/20">
+                        <div class="flex items-center gap-2 text-success font-bold mb-2 text-xs">
+                            <span class="material-icons-outlined text-sm">check_circle</span>
+                            <span>Completada el ${fechaFormateada}</span>
+                        </div>
+                        <p class="text-sm text-slate-600 dark:text-slate-300">
+                            <strong>Comentario:</strong><br>
+                            ${tarea.completada?.comentario || tarea.comentario || "Sin comentario."}
+                        </p>
+                        ${tarea.completada?.completadoPor ? `<p class="text-[10px] text-slate-500 mt-2">Finalizada por: ${tarea.completada.completadoPor}</p>` : ''}
+                        ${fotosHtml}
+                    </div>
+                </div>
+                ` : ''}
+                
+                <div class="pt-6 flex gap-3">
+                    <button onclick="exportarPDFTarea('${id}')" class="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-sm flex items-center justify-center gap-2 hover:bg-slate-200 transition-colors">
+                        <span class="material-icons-outlined">picture_as_pdf</span>
+                        Exportar reporte PDF
+                    </button>
+                </div>
+            </div>
         </div>
     `;
 
@@ -549,32 +638,6 @@ function closeModalVer() {
     }, 200);
 }
 
-// Toast notification
-function showToast(message, type = 'success') {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-
-    const colors = type === 'error'
-        ? 'bg-danger text-white'
-        : 'bg-slate-900 dark:bg-slate-700 text-white';
-
-    const icon = type === 'error' ? 'error' : 'check_circle';
-
-    toast.className = `${colors} px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-slide-up`;
-    toast.innerHTML = `
-        <span class="material-icons-outlined text-lg">${icon}</span>
-        <span class="font-medium">${message}</span>
-    `;
-
-    container.appendChild(toast);
-
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(10px)';
-        toast.style.transition = 'all 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
 // Task Completion for Encargados
 function abrirModalCompletar(id) {
     const tarea = allTareas[id];
@@ -739,5 +802,194 @@ async function guardarCumplimiento(e) {
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalContent;
+    }
+}
+
+
+// Utility: Load image and convert to base64 for PDF
+function loadImageAsBase64(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            try {
+                const dataURL = canvas.toDataURL("image/jpeg", 0.7);
+                resolve(dataURL);
+            } catch (e) {
+                resolve(null);
+            }
+        };
+        img.onerror = () => resolve(null);
+        img.src = url;
+    });
+}
+
+// Export individual task to PDF
+async function exportarPDFTarea(id) {
+    const tarea = allTareas[id];
+    if (!tarea) return;
+
+    showToast("Generando reporte PDF...");
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // 1. Header
+        doc.setFillColor(30, 41, 59);
+        doc.rect(0, 0, 210, 40, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont("helvetica", "bold");
+        doc.text("HELIOS", 20, 22);
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        doc.text("REPORTE DE TAREA INDIVIDUAL", 20, 32);
+
+        doc.setFontSize(9);
+        doc.setTextColor(200, 200, 200);
+        doc.text(`Generado: ${new Date().toLocaleString()}`, 140, 32);
+
+        // 2. Task Basic Info
+        doc.setFillColor(248, 250, 252);
+        doc.roundedRect(15, 50, 180, 45, 3, 3, 'F');
+
+        doc.setTextColor(110);
+        doc.setFontSize(8);
+        doc.text("TÍTULO DE LA TAREA", 25, 60);
+        doc.text("ASIGNADO A", 25, 80);
+        doc.text("SUCURSAL", 100, 80);
+        doc.text("ESTADO", 155, 80);
+
+        doc.setTextColor(30, 41, 59);
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text(tarea.titulo.toUpperCase(), 25, 68);
+
+        doc.setFontSize(10);
+        doc.text(tarea.asignadoA, 25, 88);
+        doc.text(tarea.sucursal, 100, 88);
+
+        const estadoLabels = { 'pendiente': 'PENDIENTE', 'en_progreso': 'EN PROGRESO', 'completado': 'COMPLETADA', 'vencida': 'VENCIDA' };
+        doc.text(estadoLabels[tarea.estado] || tarea.estado.toUpperCase(), 155, 88);
+
+        // 3. Detail Sections
+        let currentY = 105;
+
+        // Description
+        doc.setFillColor(30, 41, 59);
+        doc.roundedRect(20, currentY, 170, 8, 2, 2, 'F');
+        doc.setTextColor(255);
+        doc.setFontSize(9);
+        doc.text("DESCRIPCIÓN / REQUERIMIENTOS", 25, currentY + 5.5);
+        currentY += 15;
+
+        doc.setTextColor(60);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        const desc = tarea.descripcion || "Sin descripción adicional.";
+        // Format with breaks like in the UI
+        const formattedDesc = desc.replace(/(\s-|-)/g, '\n-').trim();
+        const descLines = doc.splitTextToSize(formattedDesc, 160);
+        doc.text(descLines, 25, currentY);
+        currentY += descLines.length * 5 + 10;
+
+        // Completion Info (if done)
+        if (tarea.estado === 'completado') {
+            doc.setFillColor(16, 185, 129); // Success color
+            doc.roundedRect(20, currentY, 170, 8, 2, 2, 'F');
+            doc.setTextColor(255);
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.text("INFORMACIÓN DE CUMPLIMIENTO", 25, currentY + 5.5);
+            currentY += 15;
+
+            doc.setTextColor(30, 41, 59);
+            doc.setFontSize(9);
+            const fechaComp = tarea.fechaCumplido || tarea.completada?.fecha;
+            doc.text(`Fecha de finalización: ${new Date(fechaComp).toLocaleString()}`, 25, currentY);
+            if (tarea.completada?.completadoPor) {
+                doc.text(`Finalizada por: ${tarea.completada.completadoPor}`, 120, currentY);
+            }
+            currentY += 8;
+
+            doc.setTextColor(80);
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "italic");
+            const comentario = tarea.completada?.comentario || tarea.comentario || "Sin comentarios.";
+            const commentLines = doc.splitTextToSize(comentario, 160);
+            doc.text(commentLines, 25, currentY);
+            currentY += commentLines.length * 5 + 10;
+
+            // Photos
+            const fotoUrl = tarea.fotoCumplimiento || (tarea.completada?.fotos?.[0]);
+            if (fotoUrl) {
+                if (currentY + 80 > 270) {
+                    doc.addPage();
+                    currentY = 20;
+                }
+                doc.setTextColor(100);
+                doc.setFontSize(8);
+                doc.setFont("helvetica", "normal");
+                doc.text("Evidencia fotográfica:", 25, currentY);
+                currentY += 5;
+
+                const imgData = await loadImageAsBase64(fotoUrl);
+                if (imgData) {
+                    doc.addImage(imgData, 'JPEG', 25, currentY, 100, 75);
+                    currentY += 85;
+                }
+            }
+        }
+
+        // 4. Footer
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text(`HELIOS - Gestión de Tareas | Página ${i} de ${pageCount}`, 20, 285);
+        }
+
+        doc.save(`Tarea_${tarea.sucursal}_${tarea.titulo.substring(0, 15).replace(/\s/g, '_')}.pdf`);
+        showToast("PDF generado con éxito");
+
+    } catch (error) {
+        console.error("PDF generation error:", error);
+        showToast("Error al generar PDF: " + error.message, 'error');
+    }
+}
+
+async function completarTareaRapido(id) {
+    const confirmacion = await showConfirm(
+        'Completar Tarea',
+        '¿Deseas marcar esta tarea como completada instantáneamente?',
+        'success'
+    );
+    if (!confirmacion) return;
+
+    try {
+        const data = {
+            estado: 'completado',
+            fechaCumplido: new Date().toISOString(),
+            completada: {
+                comentario: "Completada por el administrador (Rápido)",
+                fecha: new Date().toISOString(),
+                completadoPor: window.__heliosUser?.nombre || 'Admin',
+                fotos: []
+            }
+        };
+
+        await db.ref(`tareas/${id}`).update(data);
+        showToast('Tarea completada con éxito');
+    } catch (err) {
+        console.error("Quick completion error:", err);
+        showToast('Error: ' + err.message, 'error');
     }
 }

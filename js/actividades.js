@@ -149,7 +149,7 @@ function crearTarjetaCategoria(cat) {
                         class="py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
                         <span class="material-icons-outlined text-sm">edit</span>
                     </button>
-                    <button onclick="prepararEliminar('${cat.id}')" 
+                     <button onclick="eliminarCategoria('${cat.id}')" 
                         class="py-2 px-3 rounded-lg text-danger hover:bg-danger/10 transition-colors">
                         <span class="material-icons-outlined text-sm">delete</span>
                     </button>
@@ -258,25 +258,29 @@ function guardarSubactividad(e) {
         });
 }
 
-function eliminarSubactividad(catId, subId) {
-    if (confirm(`¿Eliminar subactividad "${subId}"?`)) {
-        db.ref(`actividades/${catId}/${subId}`).remove()
-            .then(() => showToast('Subactividad eliminada'));
-    }
+async function eliminarSubactividad(catId, subId) {
+    const confirmacion = await showConfirm(
+        'Eliminar Subactividad',
+        `¿Estás seguro de eliminar la subactividad "${capitalize(subId)}"?`,
+        'danger'
+    );
+    if (!confirmacion) return;
+
+    db.ref(`actividades/${catId}/${subId}`).remove()
+        .then(() => showToast('Subactividad eliminada', 'success'));
 }
 
-function prepararEliminar(id) {
-    document.getElementById('actividad-a-eliminar').value = id;
-    document.getElementById('nombre-eliminar').textContent = capitalize(id);
-    showModal('modal-confirmar', 'modal-confirmar-content');
-}
+async function eliminarCategoria(id) {
+    const confirmacion = await showConfirm(
+        'Eliminar Categoría',
+        `¿Estás seguro de eliminar la categoría "${capitalize(id)}"? Se borrarán también todas sus subactividades.`,
+        'danger'
+    );
+    if (!confirmacion) return;
 
-function confirmarEliminar() {
-    const id = document.getElementById('actividad-a-eliminar').value;
     db.ref(`actividades/${id}`).remove()
         .then(() => {
-            showToast('Categoría eliminada');
-            closeModalConfirmar();
+            showToast('Categoría eliminada', 'success');
         });
 }
 
@@ -315,14 +319,3 @@ function closeModalConfirmar() {
     setTimeout(() => modal.classList.add('hidden'), 200);
 }
 
-function showToast(message, type = 'success') {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `bg-slate-900 dark:bg-slate-700 text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-slide-up ${type === 'error' ? 'border-r-4 border-danger' : ''}`;
-    toast.innerHTML = `<span class="material-icons-outlined">${type === 'error' ? 'error' : 'check_circle'}</span><span class="font-medium">${message}</span>`;
-    container.appendChild(toast);
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}

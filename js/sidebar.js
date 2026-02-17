@@ -133,12 +133,139 @@ function injectSidebar() {
 
     document.body.insertAdjacentHTML('afterbegin', sidebarHTML);
 
+    // Inject Global UI Components (Toasts and Dialogs)
+    if (!document.getElementById('toast-container')) {
+        document.body.insertAdjacentHTML('beforeend', '<div id="toast-container"></div>');
+    }
+
+    if (!document.getElementById('helios-dialog-backdrop')) {
+        const dialogHTML = `
+            <div id="helios-dialog-backdrop" class="helios-dialog-backdrop">
+                <div class="helios-dialog" id="helios-dialog">
+                    <div id="helios-dialog-icon-container" class="helios-dialog-icon">
+                        <span id="helios-dialog-icon" class="material-icons-outlined text-3xl">info</span>
+                    </div>
+                    <h3 id="helios-dialog-title" class="text-2xl font-bold text-slate-800 dark:text-white mb-2">Título</h3>
+                    <p id="helios-dialog-message" class="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">Mensaje descriptivo aquí.</p>
+                    <div class="flex gap-3" id="helios-dialog-actions">
+                        <button id="helios-dialog-cancel" class="flex-1 py-3 rounded-xl font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">Cancelar</button>
+                        <button id="helios-dialog-confirm" class="flex-1 py-3 rounded-xl font-bold bg-primary text-white shadow-lg shadow-blue-500/20 hover:bg-primary-hover transition-all">Aceptar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', dialogHTML);
+    }
+
     // Sync with auth state if already loaded (prevents race condition)
     if (window.__heliosUser && typeof updateSidebarUser === 'function') {
         updateSidebarUser(window.__heliosUser);
         applyRoleRestrictions(window.__heliosUser.rol);
     }
 }
+
+// Global UI utility functions
+window.showToast = function (message, type = 'info', duration = 3000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const icons = { success: 'check_circle', error: 'error', info: 'info', warning: 'warning' };
+    const toast = document.createElement('div');
+    toast.className = `helios-toast toast-${type}`;
+
+    toast.innerHTML = `
+        <div class="helios-toast-icon">
+            <span class="material-icons-outlined">${icons[type] || 'info'}</span>
+        </div>
+        <div class="flex-1">
+            <p class="text-sm font-semibold text-slate-800 dark:text-white">${message}</p>
+        </div>
+    `;
+
+    container.appendChild(toast);
+
+    // Animate in
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    // Remove
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400);
+    }, duration);
+};
+
+window.showAlert = function (title, message, type = 'info') {
+    return new Promise((resolve) => {
+        const backdrop = document.getElementById('helios-dialog-backdrop');
+        const dialog = document.getElementById('helios-dialog');
+        const titleEl = document.getElementById('helios-dialog-title');
+        const messageEl = document.getElementById('helios-dialog-message');
+        const iconContainer = document.getElementById('helios-dialog-icon-container');
+        const iconEl = document.getElementById('helios-dialog-icon');
+        const confirmBtn = document.getElementById('helios-dialog-confirm');
+        const cancelBtn = document.getElementById('helios-dialog-cancel');
+
+        const icons = { success: 'check_circle', error: 'error', info: 'info', warning: 'warning', danger: 'report_problem' };
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        iconEl.textContent = icons[type] || 'info';
+
+        // Setup styles
+        dialog.className = `helios-dialog dialog-${type}`;
+        cancelBtn.style.display = 'none'; // Hide cancel for alert
+        confirmBtn.className = `flex-1 py-3 rounded-xl font-bold text-white shadow-lg transition-all ${type === 'danger' ? 'bg-danger shadow-danger/20' : 'bg-primary shadow-blue-500/20'}`;
+
+        const closeHandler = () => {
+            backdrop.classList.remove('show');
+            confirmBtn.removeEventListener('click', closeHandler);
+            resolve();
+        };
+
+        confirmBtn.addEventListener('click', closeHandler);
+        backdrop.classList.add('show');
+    });
+};
+
+window.showConfirm = function (title, message, type = 'warning') {
+    return new Promise((resolve) => {
+        const backdrop = document.getElementById('helios-dialog-backdrop');
+        const dialog = document.getElementById('helios-dialog');
+        const titleEl = document.getElementById('helios-dialog-title');
+        const messageEl = document.getElementById('helios-dialog-message');
+        const iconEl = document.getElementById('helios-dialog-icon');
+        const confirmBtn = document.getElementById('helios-dialog-confirm');
+        const cancelBtn = document.getElementById('helios-dialog-cancel');
+
+        const icons = { success: 'check_circle', error: 'error', info: 'info', warning: 'warning', danger: 'report_problem' };
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        iconEl.textContent = icons[type] || 'priority_high';
+
+        dialog.className = `helios-dialog dialog-${type}`;
+        cancelBtn.style.display = 'block';
+        confirmBtn.className = `flex-1 py-3 rounded-xl font-bold text-white shadow-lg transition-all ${type === 'danger' ? 'bg-danger shadow-danger/20' : 'bg-primary shadow-blue-500/20'}`;
+
+        const onConfirm = () => {
+            backdrop.classList.remove('show');
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            resolve(true);
+        };
+
+        const onCancel = () => {
+            backdrop.classList.remove('show');
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            resolve(false);
+        };
+
+        confirmBtn.addEventListener('click', onConfirm);
+        cancelBtn.addEventListener('click', onCancel);
+        backdrop.classList.add('show');
+    });
+};
 
 function toggleCollapse() {
     const isCollapsed = document.body.classList.toggle('collapsed');
