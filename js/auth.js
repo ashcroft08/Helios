@@ -8,7 +8,7 @@ const auth = firebase.auth();
 // Pre-assigned roles by email (checked on first login and on every page load)
 const EMAIL_ROLES = {
     'johangracia40@gmail.com': 'admin',
-    'fidelmedinam2@gmail.com': 'encargado'
+    //'fidelmedinam2@gmail.com': 'encargado'
 };
 // Backwards compat for auth-guard
 const ADMIN_EMAILS = Object.keys(EMAIL_ROLES).filter(e => EMAIL_ROLES[e] === 'admin');
