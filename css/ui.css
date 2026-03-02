@@ -487,3 +487,121 @@ table.dataTable thead .sorting_desc {
     position: relative !important;
     cursor: pointer !important;
 }
+
+/* ===== MODERN GLOBAL DIALOGS & TOASTS ===== */
+
+/* Toast Container & Improved Items */
+#toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.helios-toast {
+    min-width: 300px;
+    padding: 14px 20px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transform: translateX(100%);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .helios-toast {
+    background: rgba(30, 41, 59, 0.9);
+    border-color: rgba(51, 65, 85, 0.8);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.helios-toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.helios-toast-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.toast-success .helios-toast-icon { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.toast-error .helios-toast-icon { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+.toast-warning .helios-toast-icon { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+.toast-info .helios-toast-icon { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+
+/* Global Dialog (Alert/Confirm) */
+.helios-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 99998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.helios-dialog-backdrop.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.helios-dialog {
+    width: 100%;
+    max-width: 420px;
+    background: white;
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    transform: scale(0.9) translateY(20px);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dark .helios-dialog {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.helios-dialog-backdrop.show .helios-dialog {
+    transform: scale(1) translateY(0);
+}
+
+.helios-dialog-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dialog-danger .helios-dialog-icon { background: #fee2e2; color: #ef4444; }
+.dark .dialog-danger .helios-dialog-icon { background: rgba(239, 68, 68, 0.1); }
+
+.dialog-warning .helios-dialog-icon { background: #fef3c7; color: #d97706; }
+.dark .dialog-warning .helios-dialog-icon { background: rgba(245, 158, 11, 0.1); }
+
+.dialog-success .helios-dialog-icon { background: #d1fae5; color: #059669; }
+.dark .dialog-success .helios-dialog-icon { background: rgba(16, 185, 129, 0.1); }
+
+.dialog-info .helios-dialog-icon { background: #dbeafe; color: #2563eb; }
+.dark .dialog-info .helios-dialog-icon { background: rgba(59, 130, 246, 0.1); }

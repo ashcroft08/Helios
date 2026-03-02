@@ -108,7 +108,7 @@ function generarReporte() {
     const sucursalFiltro = document.getElementById("filtro-sucursal").value;
 
     if (!rangoRaw) {
-        alert("Por favor selecciona un rango de fechas.");
+        showAlert("Rango Requerido", "Por favor selecciona un rango de fechas.", "warning");
         return;
     }
 
@@ -240,5 +240,5 @@ function renderCharts(data) {
 }
 
 function exportarReporte() {
-    alert("Función de exportación PDF/Excel en desarrollo. Los datos filtrados están listos!");
+    showAlert("Módulo en Desarrollo", "La función de exportación PDF/Excel está en desarrollo. Los datos filtrados ya están listos para ser procesados.", "info");
 }

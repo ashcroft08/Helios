@@ -361,22 +361,3 @@ function closeModalMapa() {
     document.getElementById('mapa-iframe').src = '';
 }
 
-function showToast(message, type = 'success') {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    const colors = type === 'error' ? 'bg-danger' : 'bg-slate-900 dark:bg-slate-700';
-    const icon = type === 'error' ? 'error' : 'check_circle';
-
-    toast.className = `${colors} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 transform transition-all duration-300 translate-y-4 opacity-0`;
-    toast.innerHTML = `<span class="material-icons-outlined text-2xl">${icon}</span><span class="font-bold text-sm">${message}</span>`;
-    container.appendChild(toast);
-
-    requestAnimationFrame(() => {
-        toast.classList.remove('translate-y-4', 'opacity-0');
-    });
-
-    setTimeout(() => {
-        toast.classList.add('translate-y-4', 'opacity-0');
-        setTimeout(() => toast.remove(), 400);
-    }, 4000);
-}

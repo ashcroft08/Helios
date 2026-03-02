@@ -223,7 +223,8 @@ async function eliminarUsuario(id) {
         ? '¿Deseas cancelar esta pre-asignación? El usuario no tendrá rol cuando inicie sesión.'
         : '¿Estás seguro de eliminar este usuario de la base de datos? Sus registros no se borrarán pero no podrá acceder.';
 
-    if (!confirm(msg)) return;
+    const confirmacion = await showConfirm('Eliminar Usuario', msg, 'danger');
+    if (!confirmacion) return;
 
     try {
         if (isPending) {
@@ -242,7 +243,12 @@ async function eliminarUsuario(id) {
 // ── Toggle active status ───────────────────────────────────────
 async function toggleActivoUsuario(uid, isCurrentlyActive) {
     const action = isCurrentlyActive ? 'desactivar' : 'activar';
-    if (!confirm(`¿Deseas ${action} este usuario?`)) return;
+    const confirmacion = await showConfirm(
+        `${isCurrentlyActive ? 'Desactivar' : 'Activar'} Usuario`,
+        `¿Deseas ${action} este usuario?`,
+        isCurrentlyActive ? 'danger' : 'warning'
+    );
+    if (!confirmacion) return;
 
     try {
         await db.ref(`usuarios/${uid}/activo`).set(!isCurrentlyActive);
@@ -421,34 +427,6 @@ function hideModal(modalId, contentId) {
     }, 200);
 }
 
-// ── Toast helper ───────────────────────────────────────────────
-function showToast(message, type = 'info') {
-    const container = document.getElementById('toast-container');
-    const icons = { success: 'check_circle', error: 'error', info: 'info', warning: 'warning' };
-    const colors = {
-        success: 'bg-success text-white',
-        error: 'bg-danger text-white',
-        info: 'bg-primary text-white',
-        warning: 'bg-warning text-white'
-    };
-
-    const toast = document.createElement('div');
-    toast.className = `flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg ${colors[type] || colors.info} transform transition-all duration-300 translate-y-4 opacity-0`;
-    toast.innerHTML = `
-        <span class="material-icons-outlined">${icons[type] || icons.info}</span>
-        <span class="font-medium text-sm">${message}</span>
-    `;
-    container.appendChild(toast);
-
-    requestAnimationFrame(() => {
-        toast.classList.remove('translate-y-4', 'opacity-0');
-    });
-
-    setTimeout(() => {
-        toast.classList.add('translate-y-4', 'opacity-0');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
 
 // ── Init on auth ready ─────────────────────────────────────────
 function initUsuariosPage() {

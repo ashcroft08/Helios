@@ -243,28 +243,6 @@ function mostrarTabla(data, desde, hasta, sucursalFiltro) {
     });
 }
 
-// Sistema de notificaciones toast
-function showToast(message, type = 'success') {
-    const container = document.getElementById("toast-container");
-    const toast = document.createElement("div");
-    const icon = type === 'success' ? 'check_circle' : 'error';
-    const color = type === 'success' ? 'text-emerald-500' : 'text-rose-500';
-
-    toast.className = `flex items-center space-x-3 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 animate-slide-up min-w-[300px]`;
-    toast.innerHTML = `
-        <span class="material-icons-outlined ${color}">${icon}</span>
-        <span class="text-sm font-semibold dark:text-white">${message}</span>
-    `;
-
-    if (container) {
-        container.appendChild(toast);
-        setTimeout(() => {
-            toast.classList.add('opacity-0', 'transition-opacity', 'duration-500');
-            setTimeout(() => toast.remove(), 500);
-        }, 4000);
-    }
-}
-
 // Control de modales
 // Control de modales con Wizard
 function openModal(isEdit = false) {
@@ -886,15 +864,17 @@ if (formRegistro) {
     });
 }
 
-function eliminarRegistro(folioId) {
-    if (confirm("¿Estás seguro de eliminar este folio completo?")) {
-        db.ref(`folios/${folioId}`).remove()
-            .then(() => {
-                showToast("Folio eliminado con éxito");
-                cargarRegistros();
-            })
-            .catch(err => showToast("Error al eliminar: " + err.message, 'error'));
-    }
+async function eliminarFolio(id) {
+    const confirmacion = await showConfirm(
+        'Eliminar Folio',
+        '¿Estás seguro de eliminar este folio completo? Esta acción no se puede deshacer.',
+        'danger'
+    );
+    if (!confirmacion) return;
+
+    db.ref(`folios/${id}`).remove()
+        .then(() => showToast("Folio eliminado correctamente", "success"))
+        .catch(err => showToast("Error al eliminar: " + err.message, "error"));
 }
 // Función auxiliar: Cargar imagen y convertir a base64
 function loadImageAsBase64(url) {
