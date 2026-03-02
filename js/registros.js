@@ -935,13 +935,21 @@ async function exportarPDFFolio(folioId) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
-        // Calcular totales
-        const actividadesKeys = Object.keys(folio.actividades);
+        // Calcular totales revisado para subactividades
         let sumaPuntaje = 0;
-        actividadesKeys.forEach(key => {
-            sumaPuntaje += parseFloat(folio.actividades[key].puntuacion || 0);
+        let totalSubactividades = 0;
+        const actividadesKeys = Object.keys(folio.actividades).sort();
+
+        actividadesKeys.forEach(catId => {
+            const catData = folio.actividades[catId];
+            if (typeof catData === 'object') {
+                Object.values(catData).forEach(subData => {
+                    sumaPuntaje += parseFloat(subData.puntuacion || 0);
+                    totalSubactividades++;
+                });
+            }
         });
-        const promedio = actividadesKeys.length > 0 ? (sumaPuntaje / actividadesKeys.length).toFixed(1) : "0";
+        const promedio = totalSubactividades > 0 ? (sumaPuntaje / totalSubactividades).toFixed(1) : "0";
 
         // 1. Encabezado
         doc.setFillColor(30, 41, 59);
@@ -985,13 +993,13 @@ async function exportarPDFFolio(folioId) {
         doc.setTextColor(100);
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
-        doc.text("ACTIVIDADES EVALUADAS", 25, 78);
+        doc.text("SUBACTIVIDADES EVALUADAS", 25, 78);
         doc.text("PROMEDIO GENERAL", 100, 78);
 
         doc.setTextColor(59, 130, 246);
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text(actividadesKeys.length.toString(), 25, 83);
+        doc.text(totalSubactividades.toString(), 25, 83);
         doc.setTextColor(245, 158, 11);
         doc.text(promedio + " / 10", 100, 83);
 
@@ -1017,84 +1025,100 @@ async function exportarPDFFolio(folioId) {
         const pageHeight = doc.internal.pageSize.height || 297;
         const marginBottom = 30;
 
-        for (const key of actividadesKeys) {
-            const act = folio.actividades[key];
-            const nombre = key.charAt(0).toUpperCase() + key.slice(1);
+        for (const catId of actividadesKeys) {
+            const catData = folio.actividades[catId];
+            if (typeof catData !== 'object') continue;
 
-            // Verificar si necesitamos nueva página
-            const neededHeight = 100; // Altura estimada para actividad con imágenes grandes
-            if (currentY + neededHeight > pageHeight - marginBottom) {
+            const subactividades = Object.entries(catData).filter(([subId]) => subId !== 'activo');
+            if (subactividades.length === 0) continue;
+
+            const nombreCat = catId.charAt(0).toUpperCase() + catId.slice(1);
+
+            // Verificar si necesitamos nueva página para el encabezado de categoría
+            if (currentY + 20 > pageHeight - marginBottom) {
                 doc.addPage();
                 currentY = 20;
             }
 
-            // Encabezado de actividad
+            // Encabezado de categoría
             doc.setFillColor(59, 130, 246);
             doc.roundedRect(20, currentY, 170, 8, 2, 2, 'F');
             doc.setTextColor(255);
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
-            doc.text(nombre.toUpperCase(), 25, currentY + 5.5);
-
-            doc.setTextColor(255);
-            doc.setFontSize(10);
-            doc.text(`Puntaje: ${act.puntuacion || 0} / 10`, 150, currentY + 5.5);
-
+            doc.text(nombreCat.toUpperCase(), 25, currentY + 5.5);
             currentY += 12;
 
-            // Comentario
-            doc.setTextColor(80);
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "italic");
-            const comentario = act.comentario || "Sin comentarios";
-            const comentarioLines = doc.splitTextToSize(comentario, 165);
-            doc.text(comentarioLines, 25, currentY);
-            currentY += comentarioLines.length * 5 + 5;
+            for (const [subId, subData] of subactividades) {
+                const nombreSub = subId.charAt(0).toUpperCase() + subId.slice(1);
 
-            // Fotos
-            if (act.fotos && Array.isArray(act.fotos) && act.fotos.length > 0) {
-                doc.setTextColor(100);
-                doc.setFontSize(8);
-                doc.setFont("helvetica", "normal");
-                doc.text("Evidencia fotográfica:", 25, currentY);
-                currentY += 5;
-
-                let xPos = 25;
-                const imgWidth = 100;
-                const imgHeight = 80;
-
-                for (const fotoUrl of act.fotos.slice(0, 3)) { // Máximo 3 fotos por actividad
-                    if (xPos + imgWidth > 180) {
-                        xPos = 25;
-                        currentY += imgHeight + 5;
-                    }
-
-                    // Verificar salto de página antes de imagen
-                    if (currentY + imgHeight > pageHeight - marginBottom) {
-                        doc.addPage();
-                        currentY = 20;
-                        xPos = 25;
-                    }
-
-                    try {
-                        const imgData = await loadImageAsBase64(fotoUrl);
-                        if (imgData) {
-                            doc.addImage(imgData, 'JPEG', xPos, currentY, imgWidth, imgHeight);
-                            xPos += imgWidth + 5;
-                        }
-                    } catch (e) {
-                        console.log("Error loading image:", e);
-                    }
+                // Verificar espacio para subactividad básica
+                if (currentY + 20 > pageHeight - marginBottom) {
+                    doc.addPage();
+                    currentY = 20;
                 }
-                currentY += imgHeight + 10;
-            } else {
+
+                // Título de subactividad y puntaje
+                doc.setTextColor(30, 41, 59);
+                doc.setFontSize(9);
+                doc.setFont("helvetica", "bold");
+                doc.text(nombreSub, 25, currentY);
+
+                doc.setTextColor(245, 158, 11);
+                doc.text(`Puntaje: ${subData.puntuacion || 0} / 10`, 160, currentY);
                 currentY += 5;
+
+                // Comentario
+                doc.setTextColor(80);
+                doc.setFontSize(8);
+                doc.setFont("helvetica", "italic");
+                const comentario = subData.comentario || "Sin comentarios";
+                const comentarioLines = doc.splitTextToSize(comentario, 160);
+                doc.text(comentarioLines, 28, currentY);
+                currentY += comentarioLines.length * 4 + 4;
+
+                // Fotos de la subactividad
+                if (subData.fotos && Array.isArray(subData.fotos) && subData.fotos.length > 0) {
+                    let xPos = 28;
+                    const imgWidth = 50;
+                    const imgHeight = 40;
+
+                    for (const fotoUrl of subData.fotos) {
+                        if (xPos + imgWidth > 185) {
+                            xPos = 28;
+                            currentY += imgHeight + 5;
+                        }
+
+                        // Verificar salto de página antes de imagen
+                        if (currentY + imgHeight > pageHeight - marginBottom) {
+                            doc.addPage();
+                            currentY = 20;
+                            xPos = 28;
+                        }
+
+                        try {
+                            const imgData = await loadImageAsBase64(fotoUrl);
+                            if (imgData) {
+                                doc.addImage(imgData, 'JPEG', xPos, currentY, imgWidth, imgHeight);
+                                xPos += imgWidth + 5;
+                            }
+                        } catch (e) {
+                            console.log("Error loading image:", e);
+                        }
+                    }
+                    currentY += imgHeight + 10;
+                } else {
+                    currentY += 2;
+                }
+
+                // Línea sutil entre subactividades
+                doc.setDrawColor(241, 245, 249);
+                doc.line(25, currentY, 185, currentY);
+                currentY += 8;
             }
 
-            // Línea separadora
-            doc.setDrawColor(226, 232, 240);
-            doc.line(20, currentY, 190, currentY);
-            currentY += 10;
+            // Espacio extra después de categoría
+            currentY += 5;
         }
 
         // 4. Sección de firmas
